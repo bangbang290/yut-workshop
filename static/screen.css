@@ -1,0 +1,137 @@
+/* 스크린(프로젝터) 화면 — Streamlit 위에 화면 전체를 덮어 그립니다. 모든 규칙은 #yut-app 안에서만 적용.
+   레이아웃: 위 운동회 깃발 줄 + 천 현수막(서예 행사명) / 아래 [팀 카드 | 기울어진 3D 윷판 | 진행 상황]. */
+header[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecoration"],[data-testid="stStatusWidget"],#MainMenu,footer{display:none!important}
+#yut-app {
+  --sky: #bfe3d5; --cream: #f4e7c6; --paper: #fffaf0; --ink: #2b2218; --red: #cf4430; --mustard: #e8b03f;
+  --wood: #9a6634; --wood-d: #6b4321;
+  --t0: #e07b1f; --t1: #7a3fb0; --t2: #1f3f8f; --t3: #2e8b45;
+  --f-brush: "Nanum Brush Script", "Gungsuh", "Batang", serif;
+  --f-retro: "Yeon Sung", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  --f-body: "Gowun Dodum", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  --tilt: 56deg;
+  position: fixed; inset: 0; z-index: 999990; overflow: hidden; color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.4;
+  background:
+    radial-gradient(rgba(43,34,24,.07) 1px, transparent 1.4px) 0 0 / 9px 9px,
+    linear-gradient(180deg, var(--sky) 0%, #d9ecd9 38%, var(--cream) 78%);
+  display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 6px; padding: 0 16px 12px; box-sizing: border-box;
+}
+#yut-app * { box-sizing: border-box; }
+
+/* 현수막 */
+#yut-app .banner { position: relative; display: grid; justify-items: center; padding-top: 4px; }
+#yut-app .bunting { position: absolute; left: 0; right: 0; top: 0; width: 100%; height: 46px; }
+#yut-app .cloth { position: relative; margin-top: 16px; padding: 10px clamp(28px, 4vw, 64px) 14px; display: flex; align-items: center; gap: clamp(12px, 1.6vw, 26px);
+  background: linear-gradient(180deg, #fbf4e1, #f1e5c6); border: 3px solid var(--ink); border-top: 10px solid var(--red);
+  border-radius: 4px 4px 10px 10px; box-shadow: 0 8px 0 rgba(43,34,24,.18);
+  clip-path: polygon(0 0, 100% 0, 100% 86%, 96% 100%, 50% 93%, 4% 100%, 0 86%); }
+#yut-app .cloth .sub { font-family: var(--f-retro); font-size: clamp(1rem, 1.5vw, 1.45rem); color: var(--red); writing-mode: vertical-rl; letter-spacing: .1em; line-height: 1; }
+#yut-app .cloth h1 { margin: 0; padding: 0; font-family: var(--f-brush); font-weight: 400; font-size: clamp(2.6rem, min(5.6vw, 9vh), 5.6rem); line-height: .9; color: #17120c;
+  -webkit-text-stroke: 1.6px #17120c; letter-spacing: .02em; text-shadow: 2px 2px 0 rgba(23,18,12,.12); white-space: nowrap; word-break: keep-all; }
+#yut-app .seal { flex: none; width: clamp(40px, 3.6vw, 60px); height: clamp(40px, 3.6vw, 60px); border: 3px solid var(--red); border-radius: 6px; color: var(--red);
+  display: grid; place-items: center; font-family: var(--f-retro); font-size: clamp(.8rem, 1.05vw, 1.05rem); line-height: 1.05; text-align: center; transform: rotate(-4deg); background: rgba(207,68,48,.06); }
+
+/* 세 칸 */
+#yut-app .main { min-height: 0; display: grid; grid-template-columns: clamp(200px, 15vw, 290px) minmax(0, 1fr) clamp(280px, 21vw, 400px); gap: 14px; }
+#yut-app .card { background: var(--paper); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 4px 4px 0 var(--ink); }
+#yut-app .teams { display: flex; flex-direction: column; gap: 12px; justify-content: center; min-width: 0; }
+#yut-app .team { padding: 10px 12px; display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 10px; align-items: center; position: relative; transition: transform .2s; }
+#yut-app .team.now { transform: translateX(6px); background: color-mix(in srgb, var(--tc) 14%, var(--paper)); }
+#yut-app .team.now::after { content: "차례!"; position: absolute; right: -10px; top: -12px; background: var(--red); color: #fff; font-family: var(--f-retro); font-size: 1rem; padding: 2px 9px; border-radius: 999px; border: 2px solid var(--ink); transform: rotate(6deg); }
+#yut-app .team.gone { opacity: .75; }
+#yut-app .emb { width: 54px; height: 54px; border-radius: 50%; background: var(--paper); border: 4px solid var(--tc); display: grid; place-items: center; overflow: hidden; flex: none; }
+#yut-app .emb svg { width: 44px; height: 44px; }
+#yut-app .tname { font-family: var(--f-retro); font-size: clamp(1.4rem, 1.9vw, 2rem); line-height: 1; overflow-wrap: anywhere; }
+#yut-app .tstat { font-size: .8rem; color: #6a5a45; margin-top: 4px; word-break: keep-all; }
+#yut-app .dots { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+#yut-app .dot { width: 15px; height: 15px; border-radius: 50%; border: 2.5px solid var(--tc); background: var(--paper); }
+#yut-app .dot.on { background: color-mix(in srgb, var(--tc) 45%, var(--paper)); }
+#yut-app .dot.out { background: var(--tc); box-shadow: 0 0 0 2px var(--mustard); }
+#yut-app .rankbadge { position: absolute; right: 10px; bottom: 8px; font-family: var(--f-retro); color: var(--red); font-size: 1.2rem; }
+
+/* 3D 윷판 */
+#yut-app .stage { position: relative; min-width: 0; min-height: 0; perspective: 2400px; perspective-origin: 50% 20%; display: grid; place-items: center; }
+#yut-app .plane { position: relative; transform-style: preserve-3d; transform: translateY(var(--dy, 0px)) rotateX(var(--tilt)) rotateZ(45deg);
+  width: var(--B); height: var(--B); border-radius: 4%;
+  background: radial-gradient(70% 60% at 35% 30%, rgba(255,255,255,.55), transparent 70%), repeating-linear-gradient(90deg, rgba(120,80,30,.045) 0 2px, transparent 2px 9px), #f2e2bb;
+  box-shadow: 1px 1px 0 var(--wood), 2px 2px 0 var(--wood), 3px 3px 0 var(--wood), 4px 4px 0 var(--wood), 5px 5px 0 var(--wood), 6px 6px 0 var(--wood),
+              7px 7px 0 var(--wood), 8px 8px 0 var(--wood), 9px 9px 0 var(--wood), 10px 10px 0 var(--wood), 11px 11px 0 var(--wood-d), 12px 12px 0 var(--wood-d),
+              13px 13px 0 var(--wood-d), 14px 14px 0 var(--wood-d), 30px 30px 40px rgba(43,34,24,.35); }
+#yut-app .plane::before { content: ""; position: absolute; inset: 2.2%; border: calc(var(--B) * .006) solid rgba(107,67,33,.55); border-radius: 3%; }
+#yut-app .roads { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+#yut-app .tiles, #yut-app .marks, #yut-app .pieces { position: absolute; inset: 0; transform-style: preserve-3d; }
+#yut-app .roads .rd { fill: none; stroke: #7a5532; stroke-width: 2.6; stroke-linecap: round; }
+#yut-app .roads .rd2 { fill: none; stroke: #e9d4a6; stroke-width: 1.1; stroke-linecap: round; stroke-dasharray: 1.6 1.6; }
+#yut-app .roads .pv { fill: none; stroke: var(--red); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 2.4 1.6; animation: yutMarch 1s linear infinite; }
+@keyframes yutMarch { to { stroke-dashoffset: -8; } }
+#yut-app .tile { position: absolute; transform: translate(-50%, -50%); width: calc(var(--B) * .068); height: calc(var(--B) * .068); border-radius: 50%;
+  border: calc(var(--B) * .004) solid var(--ink); background: var(--tile, #fff3d6); display: grid; place-items: center;
+  box-shadow: 1px 1px 0 var(--ink), 2px 2px 0 var(--ink), 3px 3px 0 var(--ink), 4px 4px 0 var(--ink), 5px 5px 0 var(--ink), 9px 9px 10px rgba(43,34,24,.28); }
+#yut-app .tile span { font-family: var(--f-retro); font-size: calc(var(--B) * .03); transform: rotate(-45deg); color: var(--ink); opacity: .8; }
+#yut-app .tile.s1 { --tile: #f3a184; } #yut-app .tile.s2 { --tile: #f6cd6f; } #yut-app .tile.s3 { --tile: #8fd0bd; } #yut-app .tile.s4 { --tile: #9fb9ec; } #yut-app .tile.dg { --tile: #fff4dc; }
+#yut-app .tile.big { width: calc(var(--B) * .11); height: calc(var(--B) * .11); border-radius: 26%; --tile: #e8604a; }
+#yut-app .tile.big.mid { --tile: var(--mustard); border-radius: 50%; }
+#yut-app .tile.big.start { --tile: var(--red); }
+#yut-app .tile.big::after { content: ""; position: absolute; inset: 12%; border-radius: inherit; border: calc(var(--B) * .003) dashed rgba(255,255,255,.7); }
+#yut-app .ghost { position: absolute; transform: translate(-50%, -50%); width: calc(var(--B) * .13); height: calc(var(--B) * .13); border-radius: 50%;
+  border: calc(var(--B) * .006) dashed var(--gc); background: color-mix(in srgb, var(--gc) 18%, transparent); animation: yutPulse 1s ease-in-out infinite; }
+@keyframes yutPulse { 50% { transform: translate(-50%, -50%) scale(1.12); } }
+#yut-app .poof { position: absolute; transform: translate(-50%, -50%); width: calc(var(--B) * .12); height: calc(var(--B) * .12); border-radius: 50%; border: calc(var(--B) * .01) solid var(--red); animation: yutPoof .7s ease-out forwards; }
+@keyframes yutPoof { to { transform: translate(-50%, -50%) scale(2.6); opacity: 0; } }
+#yut-app .pt { position: absolute; width: 0; height: 0; transform-style: preserve-3d; }
+#yut-app .up { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform: rotateZ(-45deg) rotateX(calc(-1 * var(--tilt))) translate(-50%, -100%); }
+#yut-app .sign { white-space: nowrap; font-family: var(--f-retro); font-size: calc(var(--B) * .024); color: #fff; background: var(--ink); padding: .08em .45em .12em; border-radius: .35em; margin-bottom: calc(var(--B) * .05); box-shadow: 0 .18em 0 rgba(0,0,0,.25); position: relative; }
+#yut-app .sign::after { content: ""; position: absolute; left: 50%; top: 100%; width: .16em; height: calc(var(--B) * .028); background: var(--ink); transform: translateX(-50%); }
+#yut-app .sign.red { background: var(--red); }
+#yut-app .sign.low { margin-bottom: calc(var(--B) * .032); } #yut-app .sign.low::after { height: calc(var(--B) * .012); }
+#yut-app .shd { position: absolute; left: 0; top: 0; width: calc(var(--B) * .07); height: calc(var(--B) * .07); transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(closest-side, rgba(43,34,24,.38), transparent); }
+#yut-app .ring { position: absolute; left: 0; top: 0; width: calc(var(--B) * .1); height: calc(var(--B) * .1); transform: translate(-50%, -50%); border-radius: 50%;
+  border: calc(var(--B) * .006) solid var(--red); box-shadow: 0 0 0 calc(var(--B) * .004) #fff; animation: yutPulse 1s ease-in-out infinite; }
+#yut-app .piece { display: flex; flex-direction: column; align-items: center; }
+#yut-app .hop { display: flex; flex-direction: column; align-items: center; }
+#yut-app .pc.can .hop { animation: yutBob .9s ease-in-out infinite; }
+#yut-app .pc.sel .hop { animation: yutBob .45s ease-in-out infinite; }
+@keyframes yutBob { 50% { transform: translateY(calc(var(--B) * -.022)); } }
+#yut-app .pc.ghostnew { opacity: .55; }
+#yut-app .tok { position: relative; width: calc(var(--B) * .074); height: calc(var(--B) * .074); border-radius: 50%; background: var(--paper); border: calc(var(--B) * .007) solid var(--tc);
+  box-shadow: 0 0 0 calc(var(--B) * .003) var(--ink), 0 calc(var(--B) * .006) 0 calc(var(--B) * .003) var(--ink); display: grid; place-items: center; }
+#yut-app .tok svg { width: 82%; height: 82%; }
+#yut-app .ped { width: calc(var(--B) * .05); height: calc(var(--B) * .03); margin-top: calc(var(--B) * -.004); background: var(--tc); border: calc(var(--B) * .003) solid var(--ink); clip-path: polygon(22% 0, 78% 0, 100% 100%, 0 100%); }
+#yut-app .cnt { position: absolute; right: calc(var(--B) * -.02); top: calc(var(--B) * -.016); min-width: calc(var(--B) * .036); height: calc(var(--B) * .036); padding: 0 .2em;
+  border-radius: 999px; background: var(--red); color: #fff; border: calc(var(--B) * .003) solid var(--ink); font-family: var(--f-retro); font-size: calc(var(--B) * .026); display: grid; place-items: center; line-height: 1; }
+#yut-app .num { position: absolute; left: 50%; bottom: calc(100% + var(--B) * .012); transform: translateX(-50%); min-width: calc(var(--B) * .05); height: calc(var(--B) * .05); padding: 0 .15em;
+  border-radius: 999px; background: var(--mustard); color: var(--ink); border: calc(var(--B) * .004) solid var(--ink); font-family: var(--f-retro); font-size: calc(var(--B) * .036); display: grid; place-items: center; line-height: 1;
+  box-shadow: 0 calc(var(--B) * .004) 0 var(--ink); white-space: nowrap; }
+#yut-app .call { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 5; }
+#yut-app .call span { font-family: var(--f-brush); font-size: clamp(5rem, 13vw, 12rem); color: #fffaf0; -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; text-shadow: 6px 6px 0 var(--ink); opacity: 0; white-space: nowrap; }
+#yut-app .call span.go { animation: yutCall 1.6s cubic-bezier(.2,.9,.3,1.2) forwards; }
+@keyframes yutCall { 0% { opacity: 0; transform: scale(.5) rotate(-10deg); } 16% { opacity: 1; transform: scale(1.08) rotate(-5deg); } 74% { opacity: 1; transform: scale(1) rotate(-5deg); } 100% { opacity: 0; transform: scale(1.03) rotate(-5deg); } }
+
+/* 오른쪽: 진행 상황(버튼 없음) */
+#yut-app .side { display: flex; flex-direction: column; gap: 12px; min-width: 0; justify-content: center; }
+#yut-app .turn { padding: 12px 14px; display: flex; gap: 12px; align-items: center; background: color-mix(in srgb, var(--tc) 16%, var(--paper)); }
+#yut-app .turn .emb { width: 58px; height: 58px; }
+#yut-app .turn .who { font-family: var(--f-retro); font-size: clamp(1.8rem, 2.6vw, 2.6rem); line-height: 1; }
+#yut-app .turn .what { font-size: 1rem; color: #5b4c39; margin-top: 4px; }
+#yut-app .lbl { font-family: var(--f-retro); font-size: 1.2rem; margin: 0; }
+#yut-app .pend { display: flex; gap: 8px; flex-wrap: wrap; min-height: 46px; align-items: center; }
+#yut-app .pchip { background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 2px 18px; font-family: var(--f-retro); font-size: 1.8rem; box-shadow: 2px 2px 0 var(--ink); }
+#yut-app .pchip.sel { background: var(--mustard); }
+#yut-app .none { color: #8a7a62; font-size: 1rem; }
+#yut-app .hint { padding: 12px 14px; font-size: 1.15rem; line-height: 1.45; }
+#yut-app .hint b { color: var(--red); font-weight: 400; font-family: var(--f-retro); font-size: 1.3em; }
+#yut-app .log { font-size: .9rem; line-height: 1.55; color: #5b4c39; padding: 10px 12px; }
+#yut-app .soundpill { position: absolute; left: 18px; bottom: 14px; font-size: .9rem; background: var(--ink); color: #fffaf0; padding: 6px 12px; border-radius: 999px; transition: opacity .5s; }
+
+/* 승리 */
+#yut-app .overlay { position: absolute; inset: 0; background: rgba(43,34,24,.5); display: grid; place-items: center; z-index: 9; }
+#yut-app .win { width: min(620px, 92%); padding: 24px 26px; }
+#yut-app .win h2 { font-family: var(--f-brush); font-weight: 400; font-size: clamp(4rem, 9vw, 7rem); line-height: 1; margin: 0 0 8px; }
+#yut-app .rank { display: grid; gap: 10px; margin: 8px 0 4px; }
+#yut-app .rank div { display: flex; align-items: center; gap: 12px; font-family: var(--f-retro); font-size: 1.8rem; }
+#yut-app .rank .emb { width: 48px; height: 48px; border-width: 3px; } #yut-app .rank .emb svg { width: 38px; height: 38px; }
+#yut-app .confetti { position: absolute; inset: 0; pointer-events: none; z-index: 10; overflow: hidden; }
+#yut-app .confetti i { position: absolute; top: -20px; width: 11px; height: 16px; border-radius: 2px; border: 1.5px solid var(--ink); animation: yutFall linear forwards; }
+@keyframes yutFall { to { transform: translateY(110vh) rotate(720deg); } }
+@media (prefers-reduced-motion: reduce) {
+  #yut-app .pc.can .hop, #yut-app .pc.sel .hop, #yut-app .ghost, #yut-app .ring, #yut-app .roads .pv { animation: none; }
+}
