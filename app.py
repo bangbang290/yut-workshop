@@ -22,7 +22,7 @@ import yutcore as Y
 
 st.set_page_config(page_title="윷놀이 한마당", page_icon="🎋", layout="wide", initial_sidebar_state="collapsed")
 Y.init()
-BUILD_LABEL = "수정판 2.1"
+BUILD_LABEL = "수정판 2.1.1"
 DOT = ["🟠", "🟣", "🔵", "🟢"]
 NODE_NM = {"END": "참먹이", "C": "방", "A1": "모 지름길 1", "A2": "모 지름길 2", "A3": "방→찌모 1", "A4": "방→찌모 2", "B1": "뒷모 지름길 1", "B2": "뒷모 지름길 2", "B3": "방→참먹이 1", "B4": "방→참먹이 2"}
 for _i, _n in enumerate(["도", "개", "걸", "윷", "모"]):
@@ -32,7 +32,9 @@ for _i, _n in enumerate(["도", "개", "걸", "윷", "모"]):
     if _i < 4:
         NODE_NM[f"O{_i + 16}"] = "날" + _n
 
-BASE_CSS = '<style id="yut-fonts">' + font_bundle.css() + '</style><style>' + """
+# Keep style blocks on separate lines: Markdown ends a raw HTML block at the
+# first </style> line, even when another <style> starts on that same line.
+BASE_CSS = '<style id="yut-fonts">' + font_bundle.css() + '</style>\n\n<style>' + """
 :root{--ink:#453b2c;--muted:#82745d;--paper:#f4edda;--green:#4e5438;--line:#d8c7a6;--coral:#ae4c38}
 header[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecoration"],#MainMenu,footer{display:none!important}
 [data-stale="true"],.stale-element{opacity:1!important;transition:none!important}
@@ -284,7 +286,7 @@ def screen_view():
 
 
 def ctrl_view():
-    md(BASE_CSS+CTRL_CSS)
+    md("\n\n".join((BASE_CSS, CTRL_CSS)))
     header("ctrl")
     @st.fragment(run_every=1)
     def live():
@@ -364,7 +366,7 @@ def ctrl_view():
 
 
 def pad_view():
-    md(BASE_CSS+PAD_CSS+pad_board.HIDDEN_CSS)
+    md("\n\n".join((BASE_CSS, PAD_CSS, pad_board.HIDDEN_CSS)))
     header('pad')
     left,right=st.columns([2,1],gap='large')
     # iframe은 라이브 조각 밖에 둡니다. 매초 재생성하면 진행 중인 터치가 끊깁니다.
