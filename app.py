@@ -1,4 +1,4 @@
-"""심사2국 워크숍 · 윷놀이 한마당 수정판 2.1.
+"""심사2국 워크숍 · 윷놀이 한마당 수정판 2.1.3.
 실제 윷 결과를 진행석에서 입력하고, 팀 대표가 패드에서 말을 옮깁니다.
 /?view=screen · /?view=ctrl · /?view=pad — 동일한 SQLite 판을 공유합니다.
 """
@@ -12,7 +12,6 @@ from datetime import datetime, timezone, timedelta
 from functools import lru_cache
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 import board_engine
 import font_bundle
@@ -22,7 +21,7 @@ import yutcore as Y
 
 st.set_page_config(page_title="윷놀이 한마당", page_icon="🎋", layout="wide", initial_sidebar_state="collapsed")
 Y.init()
-BUILD_LABEL = "수정판 2.1.1"
+BUILD_LABEL = "수정판 2.1.3"
 DOT = ["🟠", "🟣", "🔵", "🟢"]
 NODE_NM = {"END": "참먹이", "C": "방", "A1": "모 지름길 1", "A2": "모 지름길 2", "A3": "방→찌모 1", "A4": "방→찌모 2", "B1": "뒷모 지름길 1", "B2": "뒷모 지름길 2", "B3": "방→참먹이 1", "B4": "방→참먹이 2"}
 for _i, _n in enumerate(["도", "개", "걸", "윷", "모"]):
@@ -46,6 +45,8 @@ h1,h2,h3,p{word-break:keep-all}
 .yx-top{display:flex;justify-content:space-between;align-items:center;margin:0 0 1.35rem;padding-bottom:1rem;border-bottom:1.5px solid var(--line);gap:1rem}
 .yx-brand{display:flex;align-items:center;gap:.65rem;letter-spacing:-.03em}.yx-brand-sign{position:relative;display:inline-block;font-family:"YutBrush","Malgun Gothic",serif;font-size:1.45rem;font-weight:400;white-space:nowrap;padding:.35rem .8rem;background:linear-gradient(100deg,#eeddb7,#fff4d8 45%,#f3e3bf);border:1.5px solid #ad9263;border-radius:2px 3px 6px 4px;box-shadow:2px 3px 0 #a68b5433}.yx-brand-sign::before,.yx-brand-sign::after{content:"";position:absolute;top:-4px;bottom:-4px;width:3px;background:#79603e;border-radius:2px}.yx-brand-sign::before{left:-4px}.yx-brand-sign::after{right:-4px}.yx-seal{display:grid;place-items:center;width:2rem;height:2.35rem;flex:none;border:1.5px solid #b14c38;color:#b14c38;font-family:"YutBrush","Malgun Gothic",serif;font-size:.8rem;line-height:1.05;transform:rotate(-6deg);border-radius:3px}.yx-brand small{font-size:.75rem;font-weight:500;color:var(--muted);white-space:nowrap}
 .yx-nav{display:flex;gap:.35rem;flex-wrap:wrap}.yx-nav a{font-size:.78rem;text-decoration:none!important;color:#71624b!important;padding:.45rem .75rem;border-radius:5px}.yx-nav a.active{background:#ead5ae;color:#6b432a!important;font-weight:800;box-shadow:inset 0 -2px 0 #b89054}
+.yx-launch .yx-open{display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:100%;min-height:3rem;padding:.5rem .75rem;border:1.5px solid #c6b087;border-radius:7px;background:#fff8e6;color:#654c31!important;box-shadow:2px 2px 0 #ccb78d;font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;font-size:.95rem;font-weight:700;line-height:1.35;text-decoration:none!important;transition:transform .12s,background .12s}
+.yx-launch .yx-open:hover{border-color:#9a7541;background:#f2e3bf;color:#5d3f24!important}.yx-launch .yx-open:active{transform:translateY(1px);box-shadow:none}.yx-launch .yx-open:focus-visible{outline:3px solid #d88d38;outline-offset:3px}
 .yx-build{font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;font-size:.65rem;font-weight:500;letter-spacing:0;white-space:nowrap;padding:.2rem .4rem;border:1px solid #d8c7a6;border-radius:4px;color:#8a7557;background:#fff6e2}
 .yx-eyebrow{font-size:.7rem;font-weight:800;letter-spacing:.1em;color:#95805f;margin-bottom:.45rem}
 .yx-h{font-family:"YutHand","Malgun Gothic",sans-serif;font-size:1.05rem;font-weight:400;letter-spacing:.01em;color:#78613f;margin:.2rem 0 .55rem}
@@ -74,6 +75,27 @@ PAD_CSS = """<style>.block-container{max-width:1360px!important;padding-top:1rem
 
 def md(value: str):
     st.markdown(value, unsafe_allow_html=True)
+
+
+@lru_cache(maxsize=2)
+def frame_html(document: str, height: int) -> str:
+    """Embed the existing renderer without Streamlit's lazy IFrame JS chunk.
+
+    Keep the outer HTML on one Markdown line. Character references restore
+    exact srcdoc line endings, including those required by JS line comments.
+    The sandbox matches Streamlit 1.41; feature permissions are limited to
+    the game's existing audio and fullscreen features.
+    """
+    source = html.escape(document, quote=True).replace("\r", "&#13;").replace("\n", "&#10;")
+    sandbox = ("allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox "
+               "allow-same-origin allow-scripts allow-downloads")
+    return (
+        '<div class="yx-frame"><iframe title="st.iframe" width="100%" '
+        f'height="{height}" scrolling="no" '
+        'style="display:block;width:100%;border:0;margin:0;padding:0;overflow:hidden;color-scheme:normal" '
+        f'sandbox="{sandbox}" allow="autoplay; fullscreen" '
+        f'srcdoc="{source}"></iframe></div>'
+    )
 
 
 def base_url() -> str:
@@ -275,7 +297,7 @@ def rules_panel(S):
 
 def screen_view():
     md('<style>.stApp{background:#f5f2e7}header[data-testid="stHeader"],#MainMenu,footer{display:none!important}</style>')
-    components.html(board_engine.component_html(), height=0)
+    md(frame_html(board_engine.component_html(), height=0))
     @st.fragment(run_every=1)
     def live():
         payload = Y.screen_state()
@@ -371,7 +393,7 @@ def pad_view():
     left,right=st.columns([2,1],gap='large')
     # iframe은 라이브 조각 밖에 둡니다. 매초 재생성하면 진행 중인 터치가 끊깁니다.
     with left:
-        components.html(pad_board.pad_html(shared_fonts=True),height=720,scrolling=False)
+        md(frame_html(pad_board.pad_html(shared_fonts=True), height=720))
     with right:
         @st.fragment(run_every=1)
         def live():
@@ -408,7 +430,11 @@ def home_view():
     for col,(n,title,desc,label,v) in zip(cols,roles):
         with col:
             md(f'<div class="yx yx-role"><small>{n}</small><h3>{title}</h3><p>{desc}</p></div>')
-            st.link_button(label,view_url(v),use_container_width=True)
+            # Plain links use the already-loaded Markdown renderer. They avoid
+            # LinkButton's extra JS chunk, which failed to load on Community Cloud.
+            md('<div class="yx-launch">'
+               f'<a class="yx-open" href="{html.escape(view_url(v), quote=True)}" '
+               f'target="_blank" rel="noopener noreferrer">{html.escape(label)}</a></div>')
     with st.expander('처음 준비한다면 · 3분 안내'):
         st.markdown('1. **진행석**에서 팀 이름·현수막과 팀 수·말 수를 설정합니다.\n2. 노트북을 프로젝터에 연결하고 **스크린**을 엽니다. `F11` 또는 화면의 전체 화면 버튼을 사용합니다.\n3. 태블릿에서 같은 앱 주소의 **말 옮기기** 화면을 엽니다.\n4. 팀원이 윷을 던지면 진행자가 결과를 누르고, 팀 대표가 말을 옮깁니다.\n5. 쉬는 시간에는 진행석의 **현재 판 백업**을 내려받아 두세요.')
         st.caption('세 화면은 같은 앱 주소를 사용해야 합니다. 스크린을 한 번 클릭하면 효과음을 켤 수 있습니다. M 키로 음소거합니다.')
