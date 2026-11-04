@@ -11,6 +11,7 @@ import html
 import json
 import time
 import uuid
+from functools import lru_cache
 
 import sprites
 import yutcore as Y
@@ -157,7 +158,7 @@ button:disabled{cursor:default}
 _JS = r"""
 (function(){
 'use strict';
-var KIT=__KIT__, INITIAL=__INITIAL__;
+var KIT=__KIT__, INITIAL=__INITIAL__, SHARED_FONTS=__SHARED_FONTS__;
 var NM={back:'빽도',do:'도',gae:'개',geol:'걸',yut:'윷',mo:'모'};
 var STEPS={back:'−1',do:'1',gae:'2',geol:'3',yut:'4',mo:'5'};
 var HEX=['#d88046','#8c70a8','#557aa6','#799c58'];
@@ -172,6 +173,26 @@ var WAIT=[74,85],EXIT=[26,85];
 var doc=document,PD=null;try{if(window.parent!==window)PD=window.parent.document;}catch(e){}
 var wrap,bd,layT,layP,layO,svgB,S=null,sel=null,resultFilter='all',pending=null,choice=null;
 var latestHeartbeat=0,lastSeen=0,connection='waiting',toastTimer=0,keyboard=false,fitTimer=0;
+var markerCache=new WeakMap(),tickQueued=false,fontsAdopted=false,connectionPainted=false;
+function compactSprites(){
+  // Reuse one local image URL per character instead of inserting the complete
+  // encoded picture into every piece, stack, and subsequent redraw.
+  if(!window.URL||!window.URL.createObjectURL||!window.Blob||!window.atob)return;
+  var urls=Object.create(null),fallbacks=Object.create(null);
+  function compact(markup){return markup.replace(/href="(data:image\/[\w.+-]+;base64,[^"]+)"/g,function(original,uri){
+    if(!urls[uri]){try{var comma=uri.indexOf(','),binary=window.atob(uri.slice(comma+1)),bytes=new Uint8Array(binary.length);for(var i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);urls[uri]=window.URL.createObjectURL(new window.Blob([bytes],{type:uri.slice(5,uri.indexOf(';'))}));fallbacks[urls[uri]]=uri;}catch(e){return original;}}
+    return 'href="'+urls[uri]+'"';
+  });}
+  KIT.spr=KIT.spr.map(compact);
+  doc.addEventListener('error',function(event){var e=event.target,uri=e&&e.getAttribute&&e.getAttribute('href');if(uri&&fallbacks[uri])e.setAttribute('href',fallbacks[uri]);},true);
+}
+function adoptFonts(){
+  // Live mode already sent these font bytes in the parent Streamlit page.
+  // Copy once locally when available; standalone previews embed their fonts.
+  if(!SHARED_FONTS||fontsAdopted||!PD)return;
+  var source=PD.getElementById('yut-fonts');
+  if(source&&source.textContent){var style=doc.createElement('style');style.id='yut-pad-fonts';style.textContent=source.textContent;doc.head.appendChild(style);fontsAdopted=true;}
+}
 function el(tag,cls,parent,markup){var e=doc.createElement(tag);if(cls)e.className=cls;if(markup!=null)e.innerHTML=markup;if(parent)parent.appendChild(e);return e;}
 function sv(tag,attrs,parent){var e=doc.createElementNS('http://www.w3.org/2000/svg',tag);Object.keys(attrs).forEach(function(key){e.setAttribute(key,attrs[key]);});if(parent)parent.appendChild(e);return e;}
 function at(p,cls,parent){var e=el('div','at'+(cls?' '+cls:''),parent);e.style.left=p[0]+'%';e.style.top=p[1]+'%';return e;}
@@ -193,6 +214,7 @@ function send(kind,key,i){
 }
 function fit(){if(!bd)return;var play=doc.getElementById('play');var size=Math.max(160,Math.floor(Math.min(play.clientWidth,play.clientHeight)));bd.style.setProperty('--S',size+'px');}
 function setup(){
+  compactSprites();adoptFonts();
   if(KIT.defs){var definitions=el('div');definitions.innerHTML=KIT.defs;while(definitions.firstChild)doc.body.appendChild(definitions.firstChild);}
   wrap=el('main','',doc.body);wrap.id='wrap';wrap.setAttribute('aria-label','말 옮기기 윷판');
   wrap.innerHTML='<div class="pad-top"><div><span class="pad-eyebrow">우리 팀의 한 수</span><div id="team"><i class="team-dot" aria-hidden="true"></i><span class="name">윷판을 불러오는 중</span></div></div><span id="connection" class="wait"><i aria-hidden="true"></i><span>연결 중</span></span></div>'+ 
@@ -294,17 +316,20 @@ function tapPiece(key){if(!isReady()||S.phase!=='move')return;closeChoices(false
 function tapDest(key,index){if(!isReady()||S.phase!=='move'||!same(sel,key))return;var options=S.opts[String(key)]||[];if(!options.some(function(option){return option.i===index;}))return;closeChoices(false);send('move',key,index);}
 function read(){
   if(INITIAL)return INITIAL;if(!PD)return null;var markers=PD.querySelectorAll('.yx-pad-st'),best=null;
-  for(var i=0;i<markers.length;i++){try{var item=JSON.parse(markers[i].getAttribute('title'));if(!best||item.heartbeat>best.heartbeat)best=item;}catch(e){}}
+  for(var i=0;i<markers.length;i++){
+    var marker=markers[i],raw=marker.getAttribute('title'),cached=markerCache.get(marker);
+    if(!cached||cached.raw!==raw){cached={raw:raw,value:null};try{cached.value=JSON.parse(raw);}catch(e){}markerCache.set(marker,cached);}
+    var item=cached.value;if(item&&(!best||item.heartbeat>best.heartbeat))best=item;
+  }
   return best;
 }
 function updateConnection(){
   var old=connection,age=Date.now()-lastSeen;
   connection=INITIAL?'preview':!lastSeen?'waiting':age>12000?'offline':age>5000?'waiting':'ok';
   var pill=doc.getElementById('connection'),state=pill.querySelector('span');
-  pill.className=connection==='ok'||connection==='preview'?'':connection==='offline'?'off':'wait';
-  state.textContent=connection==='ok'?'연결됨':connection==='preview'?'화면 미리보기':connection==='offline'?'연결 확인':'동기화 중';
-  var slow=!!pending&&Date.now()-pending.at>8000,refresh=doc.getElementById('refresh');refresh.hidden=!slow&&connection!=='offline';
-  if(slow){doc.getElementById('stage-status').textContent='입력 확인이 늦어지고 있어요';doc.getElementById('hint').textContent='상태를 다시 확인한 뒤 다음 동작을 진행해 주세요.';}
+  if(!connectionPainted||old!==connection){connectionPainted=true;pill.className=connection==='ok'||connection==='preview'?'':connection==='offline'?'off':'wait';state.textContent=connection==='ok'?'연결됨':connection==='preview'?'화면 미리보기':connection==='offline'?'연결 확인':'동기화 중';}
+  var slow=!!pending&&Date.now()-pending.at>8000,refresh=doc.getElementById('refresh'),hideRefresh=!slow&&connection!=='offline';if(refresh.hidden!==hideRefresh)refresh.hidden=hideRefresh;
+  if(slow){var stage=doc.getElementById('stage-status'),hint=doc.getElementById('hint');if(stage.textContent!=='입력 확인이 늦어지고 있어요')stage.textContent='입력 확인이 늦어지고 있어요';if(hint.textContent!=='상태를 다시 확인한 뒤 다음 동작을 진행해 주세요.')hint.textContent='상태를 다시 확인한 뒤 다음 동작을 진행해 주세요.';}
   if(old!==connection&&S){Array.prototype.forEach.call(doc.querySelectorAll('.tap,.tapd,#cancel'),function(b){b.disabled=!isReady();});}
 }
 function receive(next){
@@ -325,20 +350,36 @@ function receive(next){
   if(action&&action.kind==='select'&&same(sel,action.key)&&sel!=null){announce('말을 골랐습니다. 도착 칸을 누르세요.');if(keyboard){var first=doc.querySelector('.tapd:not(:disabled)');if(first)first.focus({preventScroll:true});}}
   else if(action&&action.kind==='move'&&S.last&&S.last.kind==='move'){announce(S.last.finished?'완주했습니다.':'말을 옮겼습니다.');}
 }
-function tick(){var n=read();if(n)receive(n);updateConnection();}
-setup();draw();tick();setInterval(tick,220);
-if(PD)try{new MutationObserver(function(){tick();}).observe(PD.body,{subtree:true,attributes:true,attributeFilter:['title'],childList:true});}catch(e){}
+function tick(){adoptFonts();var n=read();if(n)receive(n);else updateConnection();}
+function hasMarker(node){return node&&node.nodeType===1&&(node.matches('.yx-pad-st')||node.querySelector('.yx-pad-st'));}
+function markerChanged(record){return record.type==='attributes'?hasMarker(record.target):Array.prototype.some.call(record.addedNodes,hasMarker)||Array.prototype.some.call(record.removedNodes,hasMarker);}
+function queueTick(){if(tickQueued)return;tickQueued=true;window.requestAnimationFrame(function(){tickQueued=false;tick();});}
+setup();draw();tick();setInterval(tick,1000);
+// Follow only the shared state marker, rather than every Streamlit DOM change.
+// The interval remains as a heartbeat/slow-response fallback.
+if(PD)try{new MutationObserver(function(records){if(records.some(markerChanged))queueTick();}).observe(PD.body,{subtree:true,attributes:true,attributeFilter:['title'],childList:true});}catch(e){}
 window.__pad={state:function(){return S;},sel:function(){return sel;},pending:function(){return pending;},tapPiece:tapPiece,tapDest:tapDest,receive:receive};
 })();
 """
 
 
-def pad_html(preview_state: dict | None = None) -> str:
-    """Stable iframe HTML. Optional game state produces a read-only visual preview."""
-    kit = sprites.js_bundle().replace("</", "<\\/")
-    initial = json.dumps(pad_state(preview_state) if preview_state is not None else None,
-                         ensure_ascii=False).replace("</", "<\\/")
-    code = _JS.replace("__KIT__", kit).replace("__INITIAL__", initial)
+@lru_cache(maxsize=2)
+def _pad_html(kit: str, initial: str, sprite_css: str, shared_fonts: bool) -> str:
+    code = (_JS.replace("__KIT__", kit).replace("__INITIAL__", initial)
+            .replace("__SHARED_FONTS__", "true" if shared_fonts else "false"))
     return ('<!doctype html><html lang="ko"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
-            f'<style>{_CSS}{sprites.SPRITE_CSS}</style></head><body><script>{code}</script></body></html>')
+            f'<style>{_CSS}{sprite_css}</style></head><body><script>{code}</script></body></html>')
+
+
+def pad_html(preview_state: dict | None = None, *, shared_fonts: bool = False) -> str:
+    """Cached iframe shell; optional state makes a self-contained visual preview.
+
+    Live Streamlit can share its ``style#yut-fonts`` instead of sending the same
+    font data again inside the iframe. The default remains fully standalone.
+    """
+    kit = sprites.js_bundle(include_css=False).replace("</", "<\\/")
+    initial = json.dumps(pad_state(preview_state) if preview_state is not None else None,
+                         ensure_ascii=False).replace("</", "<\\/")
+    sprite_css = sprites.SPRITE_BASE_CSS if shared_fonts else sprites.SPRITE_CSS
+    return _pad_html(kit, initial, sprite_css, shared_fonts)

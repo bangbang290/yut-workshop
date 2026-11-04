@@ -1,4 +1,4 @@
-"""심사2국 워크숍 · 윷놀이 한마당 2.0.
+"""심사2국 워크숍 · 윷놀이 한마당 수정판 2.1.
 실제 윷 결과를 진행석에서 입력하고, 팀 대표가 패드에서 말을 옮깁니다.
 /?view=screen · /?view=ctrl · /?view=pad — 동일한 SQLite 판을 공유합니다.
 """
@@ -22,6 +22,7 @@ import yutcore as Y
 
 st.set_page_config(page_title="윷놀이 한마당", page_icon="🎋", layout="wide", initial_sidebar_state="collapsed")
 Y.init()
+BUILD_LABEL = "수정판 2.1"
 DOT = ["🟠", "🟣", "🔵", "🟢"]
 NODE_NM = {"END": "참먹이", "C": "방", "A1": "모 지름길 1", "A2": "모 지름길 2", "A3": "방→찌모 1", "A4": "방→찌모 2", "B1": "뒷모 지름길 1", "B2": "뒷모 지름길 2", "B3": "방→참먹이 1", "B4": "방→참먹이 2"}
 for _i, _n in enumerate(["도", "개", "걸", "윷", "모"]):
@@ -31,7 +32,7 @@ for _i, _n in enumerate(["도", "개", "걸", "윷", "모"]):
     if _i < 4:
         NODE_NM[f"O{_i + 16}"] = "날" + _n
 
-BASE_CSS = "<style>" + font_bundle.css() + """
+BASE_CSS = '<style id="yut-fonts">' + font_bundle.css() + '</style><style>' + """
 :root{--ink:#453b2c;--muted:#82745d;--paper:#f4edda;--green:#4e5438;--line:#d8c7a6;--coral:#ae4c38}
 header[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecoration"],#MainMenu,footer{display:none!important}
 [data-stale="true"],.stale-element{opacity:1!important;transition:none!important}
@@ -43,6 +44,7 @@ h1,h2,h3,p{word-break:keep-all}
 .yx-top{display:flex;justify-content:space-between;align-items:center;margin:0 0 1.35rem;padding-bottom:1rem;border-bottom:1.5px solid var(--line);gap:1rem}
 .yx-brand{display:flex;align-items:center;gap:.65rem;letter-spacing:-.03em}.yx-brand-sign{position:relative;display:inline-block;font-family:"YutBrush","Malgun Gothic",serif;font-size:1.45rem;font-weight:400;white-space:nowrap;padding:.35rem .8rem;background:linear-gradient(100deg,#eeddb7,#fff4d8 45%,#f3e3bf);border:1.5px solid #ad9263;border-radius:2px 3px 6px 4px;box-shadow:2px 3px 0 #a68b5433}.yx-brand-sign::before,.yx-brand-sign::after{content:"";position:absolute;top:-4px;bottom:-4px;width:3px;background:#79603e;border-radius:2px}.yx-brand-sign::before{left:-4px}.yx-brand-sign::after{right:-4px}.yx-seal{display:grid;place-items:center;width:2rem;height:2.35rem;flex:none;border:1.5px solid #b14c38;color:#b14c38;font-family:"YutBrush","Malgun Gothic",serif;font-size:.8rem;line-height:1.05;transform:rotate(-6deg);border-radius:3px}.yx-brand small{font-size:.75rem;font-weight:500;color:var(--muted);white-space:nowrap}
 .yx-nav{display:flex;gap:.35rem;flex-wrap:wrap}.yx-nav a{font-size:.78rem;text-decoration:none!important;color:#71624b!important;padding:.45rem .75rem;border-radius:5px}.yx-nav a.active{background:#ead5ae;color:#6b432a!important;font-weight:800;box-shadow:inset 0 -2px 0 #b89054}
+.yx-build{font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;font-size:.65rem;font-weight:500;letter-spacing:0;white-space:nowrap;padding:.2rem .4rem;border:1px solid #d8c7a6;border-radius:4px;color:#8a7557;background:#fff6e2}
 .yx-eyebrow{font-size:.7rem;font-weight:800;letter-spacing:.1em;color:#95805f;margin-bottom:.45rem}
 .yx-h{font-family:"YutHand","Malgun Gothic",sans-serif;font-size:1.05rem;font-weight:400;letter-spacing:.01em;color:#78613f;margin:.2rem 0 .55rem}
 .yx-turn{display:flex;gap:1rem;padding:1.35rem 1.4rem;background:#514a35;border:1.5px solid #393220;border-radius:12px;color:#fff8e8;margin-bottom:.9rem;align-items:center;box-shadow:3px 3px 0 #d5c19a}
@@ -91,7 +93,7 @@ def view_url(view: str) -> str:
 def header(active=""):
     links = [("", "처음"), ("screen", "스크린"), ("ctrl", "진행석"), ("pad", "말 옮기기")]
     nav = "".join(f'<a class="{"active" if v == active else ""}" href="?view={v}" target="_self">{label}</a>' for v,label in links)
-    md(f'<div class="yx yx-top"><div class="yx-brand"><span class="yx-brand-sign">윷놀이 한마당</span><span class="yx-seal" aria-hidden="true">한<br>마당</span><small>함께 놀아 더 즐거운 오늘</small></div><nav class="yx-nav">{nav}</nav></div>')
+    md(f'<div class="yx yx-top"><div class="yx-brand"><span class="yx-brand-sign">윷놀이 한마당</span><span class="yx-seal" aria-hidden="true">한<br>마당</span><small>함께 놀아 더 즐거운 오늘</small><span class="yx-build">{BUILD_LABEL}</span></div><nav class="yx-nav">{nav}</nav></div>')
 
 
 def act(fn, *args, **kwargs) -> bool:
@@ -103,6 +105,41 @@ def act(fn, *args, **kwargs) -> bool:
     except Y.GameError as e:
         st.warning(str(e))
         return False
+
+
+def _state_key(S):
+    return (str(Y.DB_PATH), S.get("game_id"), S.get("ver", 0))
+
+
+def controller_resources(S):
+    """Reuse a same-version backup without rereading all undo history each tick.
+
+    The export contains an atomic game/history snapshot. Use its own version,
+    not the possibly older UI state, and cache only when the final state read
+    still matches. This keeps another device's move from being cached under
+    the wrong version. The cache holds only one snapshot per browser session.
+    """
+    cache_name = "_yut_controller_resources_v21"
+    cached = st.session_state.get(cache_name)
+    if cached is not None and cached["state_key"] == _state_key(S):
+        return cached
+
+    data = Y.export_backup()
+    exported = json.loads(data)
+    snapshot = exported["state"]
+    can_undo = Y.can_undo()
+    stamp = datetime.fromisoformat(exported["exported_at"]).strftime("%Y%m%d_%H%M%S")
+    resource = {
+        "state_key": _state_key(snapshot),
+        "data": data,
+        "file_name": f'yut_backup_{stamp}_v{snapshot["ver"]}.json',
+        "can_undo": can_undo,
+    }
+    if _state_key(Y.get()) == resource["state_key"]:
+        st.session_state[cache_name] = resource
+    else:
+        st.session_state.pop(cache_name, None)
+    return resource
 
 
 def turn_card(S):
@@ -252,6 +289,7 @@ def ctrl_view():
     @st.fragment(run_every=1)
     def live():
         S=Y.get()
+        resources=controller_resources(S)
         main,side=st.columns([1.5,1],gap="large")
         with main:
             md('<div class="yx-eyebrow">진행자 전용 · 윷 결과 입력</div>')
@@ -273,10 +311,9 @@ def ctrl_view():
             else:
                 md('<div class="yx-msg">윷·모는 추가 던지기 후 말을 옮깁니다. 결과를 잘못 눌렀다면 되돌리기를 사용하세요.</div>')
             left,right=st.columns(2)
-            if left.button('↶ 한 수 되돌리기',key=f'undo_v{S["ver"]}',disabled=not Y.can_undo(),use_container_width=True):
+            if left.button('↶ 한 수 되돌리기',key=f'undo_v{S["ver"]}',disabled=not resources['can_undo'],use_container_width=True):
                 if act(Y.undo,expected_ver=S['ver']): st.rerun(scope='fragment')
-            now=datetime.now(timezone(timedelta(hours=9))).strftime('%Y%m%d_%H%M%S')
-            right.download_button('↓ 현재 판 백업',data=Y.export_backup(),file_name=f'yut_backup_{now}.json',mime='application/json',key='backup_download',use_container_width=True)
+            right.download_button('↓ 현재 판 백업',data=resources['data'],file_name=resources['file_name'],mime='application/json',key='backup_download',use_container_width=True)
             with st.expander('진행석에서 직접 말 옮기기'):
                 move_panel(S,'ctrl_move')
         with side:
@@ -332,7 +369,7 @@ def pad_view():
     left,right=st.columns([2,1],gap='large')
     # iframe은 라이브 조각 밖에 둡니다. 매초 재생성하면 진행 중인 터치가 끊깁니다.
     with left:
-        components.html(pad_board.pad_html(),height=720,scrolling=False)
+        components.html(pad_board.pad_html(shared_fonts=True),height=720,scrolling=False)
     with right:
         @st.fragment(run_every=1)
         def live():

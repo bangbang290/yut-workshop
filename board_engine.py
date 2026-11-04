@@ -8,25 +8,36 @@ from __future__ import annotations
 
 import html
 import json
+from functools import lru_cache
 from pathlib import Path
 
 _DIR = Path(__file__).resolve().parent
 
 
-def engine_js() -> str:
-    """Return the renderer with local CSS and character assets embedded."""
-    import sprites
-
+@lru_cache(maxsize=1)
+def _compiled_engine(source_stamp: tuple, kit: str) -> str:
+    """Compile once per source revision; the stamp keeps CSS/JS edits fresh."""
     js = (_DIR / "screen.js").read_text(encoding="utf-8")
     css = (_DIR / "screen.css").read_text(encoding="utf-8")
     return js.replace("__CSS__", json.dumps(css, ensure_ascii=False)).replace(
-        "__SPRITES__", sprites.js_bundle()
+        "__SPRITES__", kit
     )
 
 
-def component_html() -> str:
-    """A zero-height Streamlit component that installs the live presentation."""
-    code = json.dumps(engine_js(), ensure_ascii=False).replace("</", "<\\/")
+def engine_js() -> str:
+    """Return the renderer with CSS and character assets embedded."""
+    import sprites
+
+    stamp = tuple(
+        (stat.st_mtime_ns, stat.st_size)
+        for stat in ((_DIR / name).stat() for name in ("screen.js", "screen.css"))
+    )
+    return _compiled_engine(stamp, sprites.js_bundle())
+
+
+@lru_cache(maxsize=1)
+def _component_html(code: str) -> str:
+    code = json.dumps(code, ensure_ascii=False).replace("</", "<\\/")
     return (
         "<script>(function(){var code=" + code + ";"
         "try{var P=window.parent;if(P&&P!==window&&P.document){"
@@ -36,6 +47,11 @@ def component_html() -> str:
         "catch(e){console.warn('Yut presentation bridge unavailable.');}"
         "})();</script>"
     )
+
+
+def component_html() -> str:
+    """A cached zero-height installer; periodic updates carry only game state."""
+    return _component_html(engine_js())
 
 
 def preview_html(state: dict | None = None, title: str = "윷놀이 한마당 · 스크린 미리보기") -> str:

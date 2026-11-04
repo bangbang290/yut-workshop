@@ -43,7 +43,20 @@
     var paths=which==='sound'?'<path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>':which==='muted'?'<path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="m16 9 5 6m0-6-5 6"/>':which==='full'?'<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>':'<path d="m5 12 4 4L19 6"/>';
     return '<svg viewBox="0 0 24 24" aria-hidden="true">'+paths+'</svg>';
   }
+  function compactSprites(){
+    // Decode each picture once. Repeated pieces keep the same SVG geometry,
+    // but insert a short local URL instead of reparsing a large data URI.
+    if(!W.URL||!W.URL.createObjectURL||!W.Blob||!W.atob)return;
+    var urls=Object.create(null),fallbacks=Object.create(null);
+    function compact(markup){return markup.replace(/href="(data:image\/[\w.+-]+;base64,[^"]+)"/g,function(original,uri){
+      if(!urls[uri]){try{var comma=uri.indexOf(','),binary=W.atob(uri.slice(comma+1)),bytes=new Uint8Array(binary.length);for(var i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);urls[uri]=W.URL.createObjectURL(new W.Blob([bytes],{type:uri.slice(5,uri.indexOf(';'))}));fallbacks[urls[uri]]=uri;}catch(e){return original;}}
+      return 'href="'+urls[uri]+'"';
+    });}
+    KIT.spr=KIT.spr.map(compact);if(KIT.av)KIT.av=KIT.av.map(compact);
+    doc.addEventListener('error',function(event){var e=event.target,uri=e&&e.getAttribute&&e.getAttribute('href');if(uri&&fallbacks[uri])e.setAttribute('href',fallbacks[uri]);},true);
+  }
   function setup(){
+    compactSprites();
     var style=doc.createElement('style');style.id='yut-projector-style';style.textContent=CSS+(KIT.css||'');doc.head.appendChild(style);
     if(doc.querySelector('base')){
       var here=W.location.href.split('#')[0];
@@ -253,25 +266,34 @@
     if(n.phase==='over'&&!wasOver)celebrate(n);wasOver=n.phase==='over';
   }
   var heartbeat=null,lastHeartbeatAt=Date.now(),hasHeartbeat=false,lastMarkerVersion=null,lastMarkerGame=null;
+  var markerCache=new WeakMap(),connectionLabel=null,connectionStale=null,tickQueued=false;
   function read(){
     var markers=doc.querySelectorAll('.yut-st'),latest=null;
     for(var i=0;i<markers.length;i++){
-      try{var v=JSON.parse(markers[i].getAttribute('title'));if(!v.cfg)continue;if(!latest||(v._server_ts||0)>=(latest._server_ts||0))latest=v;}catch(e){}
+      var marker=markers[i],raw=marker.getAttribute('title'),cached=markerCache.get(marker);
+      if(!cached||cached.raw!==raw){cached={raw:raw,value:null};try{cached.value=JSON.parse(raw);}catch(e){}markerCache.set(marker,cached);}
+      var v=cached.value;if(!v||!v.cfg)continue;if(!latest||(v._server_ts||0)>=(latest._server_ts||0))latest=v;
     }
     return latest;
   }
   function connection(n){
     if(n&&n._server_ts!=null){hasHeartbeat=true;if(heartbeat!==n._server_ts){heartbeat=n._server_ts;lastHeartbeatAt=Date.now();}}
     var stale=!W.__YUT_PREVIEW__&&hasHeartbeat&&Date.now()-lastHeartbeatAt>8000;
-    var el=$('.connection');el.classList.toggle('stale',stale);el.querySelector('span').textContent=W.__YUT_PREVIEW__?'미리보기':stale?'연결 확인 필요':n?'실시간 연결':'연결 중';
-    el.title=stale?'진행석 화면과 연결을 확인하고, 화면이 멈춰 있으면 새로고침하세요.':'진행석·태블릿과 같은 판을 보여 줍니다.';
+    var el=$('.connection'),label=W.__YUT_PREVIEW__?'미리보기':stale?'연결 확인 필요':n?'실시간 연결':'연결 중';
+    if(connectionStale!==stale){connectionStale=stale;el.classList.toggle('stale',stale);el.title=stale?'진행석 화면과 연결을 확인하고, 화면이 멈춰 있으면 새로고침하세요.':'진행석·태블릿과 같은 판을 보여 줍니다.';}
+    if(connectionLabel!==label){connectionLabel=label;el.querySelector('span').textContent=label;}
   }
   function tick(){
     var n=read();connection(n);if(!n)return;
     if(n.ver===lastMarkerVersion&&n.game_id===lastMarkerGame)return;lastMarkerVersion=n.ver;lastMarkerGame=n.game_id;
     if(S&&n.ver===S.ver&&n.game_id===S.game_id&&!waiting)return;if(waiting&&n.ver===waiting.ver&&n.game_id===waiting.game_id)return;take(n);
   }
-  setup();setInterval(tick,250);tick();
-  try{new MutationObserver(function(records){if(records.some(function(r){return r.target!==root&&!root.contains(r.target);}))tick();}).observe(doc.body,{subtree:true,attributes:true,attributeFilter:['title'],childList:true});}catch(e){}
+  function hasMarker(node){return node&&node.nodeType===1&&(node.matches('.yut-st')||node.querySelector('.yut-st'));}
+  function markerChanged(record){return record.type==='attributes'?hasMarker(record.target):Array.prototype.some.call(record.addedNodes,hasMarker)||Array.prototype.some.call(record.removedNodes,hasMarker);}
+  function queueTick(){if(tickQueued)return;tickQueued=true;W.requestAnimationFrame(function(){tickQueued=false;tick();});}
+  setup();setInterval(tick,1000);tick();
+  // Marker mutations arrive immediately; the slower interval is only a
+  // heartbeat/fallback check. Unrelated Streamlit or animation DOM is ignored.
+  try{new MutationObserver(function(records){if(records.some(markerChanged))queueTick();}).observe(doc.body,{subtree:true,attributes:true,attributeFilter:['title'],childList:true});}catch(e){}
   W.__yutScreenTest={take:take,state:function(){return S;},size:sizeBoard,B:function(){return curB;},busy:function(){return busy;},cancel:cancelTransitions};
 })();
