@@ -1,0 +1,394 @@
+/* Projector presentation. The board remains a live view of the shared game. */
+header[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecoration"],[data-testid="stStatusWidget"],#MainMenu,footer{display:none!important}
+#yut-app{
+ --paper:#f6ead1;--card:#fff7e7;--ink:#493725;--muted:#8a785e;--forest:#536346;--red:#b94e35;--mustard:#c69b3c;--line:#d3bc96;--wood:#ba8d55;--wood-d:#805a32;--tl:#8a7354;
+ --t0:#d88046;--t1:#8c70a8;--t2:#557aa6;--t3:#799c58;
+ --f-body:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+ --f-title:"YutBrush","Gungsuh","Batang",serif;
+ --f-hand:"YutHand","Gungsuh","Batang",serif;
+ --tilt:52deg;--B:540px;--panel:clamp(208px,17.8vw,320px);--right:clamp(224px,18.6vw,342px);
+ position:fixed;inset:0;z-index:999990;overflow:hidden;box-sizing:border-box;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;
+ display:grid;grid-template-columns:var(--panel) minmax(0,1fr) var(--right);grid-template-rows:clamp(76px,9vh,104px) minmax(0,1fr) clamp(56px,7vh,78px);column-gap:clamp(14px,1.6vw,30px);padding:0 clamp(18px,2.1vw,40px);
+ background-image:radial-gradient(ellipse at 50% 18%,rgba(255,252,236,.62),transparent 75%),repeating-linear-gradient(3deg,rgba(115,78,35,.025) 0 1px,transparent 1px 5px),radial-gradient(rgba(111,77,35,.07) .65px,transparent .85px);background-size:auto,auto,6px 6px;
+}
+#yut-app *{box-sizing:border-box}
+#yut-app button{font:inherit;cursor:pointer}
+#yut-app button:focus-visible{outline:3px solid var(--mustard);outline-offset:4px}
+#yut-app .landscape{position:absolute;bottom:50px;left:0;width:100%;height:24vh;min-height:140px;opacity:.19;pointer-events:none;z-index:0}
+#yut-app .banner{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:24px;position:relative;z-index:8;border-bottom:1px solid var(--line);margin-bottom:clamp(12px,1.7vh,20px)}
+#yut-app .brand{display:flex;align-items:center;gap:16px;min-width:0}
+#yut-app .brandmark{width:clamp(36px,3.1vw,52px);height:clamp(36px,3.1vw,52px);border-radius:15px;background:var(--forest);display:grid;place-items:center;flex:none;box-shadow:0 3px 0 #204535}
+#yut-app .brandmark svg{width:66%;height:66%}
+#yut-app .cloth{display:flex;align-items:baseline;gap:18px;min-width:0}
+#yut-app .cloth h1{font-size:clamp(21px,1.7vw,32px);font-weight:800;letter-spacing:-.06em;margin:0;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#yut-app .cloth .sub{font-size:clamp(13px,1vw,18px);color:#8b8b75;letter-spacing:-.035em;white-space:nowrap}
+#yut-app .header-actions{display:flex;gap:9px;align-items:center;flex:none}
+#yut-app .connection{display:flex;align-items:center;gap:7px;white-space:nowrap;color:#72826e;font-size:clamp(11px,.85vw,14px);padding-right:12px}
+#yut-app .connection i{display:block;width:7px;height:7px;border-radius:50%;background:#7d9f68;box-shadow:0 0 0 4px rgba(125,159,104,.10)}
+#yut-app .connection.stale{color:#a66c30}
+#yut-app .connection.stale i{background:#c88b43;box-shadow:0 0 0 4px rgba(200,139,67,.13)}
+#yut-app .tool-btn{display:flex;align-items:center;gap:7px;color:var(--forest);background:rgba(255,253,248,.65);border:1px solid #d5dacf;border-radius:10px;min-height:36px;padding:8px 11px;font-size:12px;white-space:nowrap;transition:background .15s,transform .15s}
+#yut-app .tool-btn:hover{background:#fff;transform:translateY(-1px)}
+#yut-app .tool-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#yut-app .hud{position:relative;min-width:0;z-index:4;align-self:stretch;display:flex;flex-direction:column;gap:clamp(12px,1.8vh,22px);padding-top:clamp(10px,2vh,24px)}
+#yut-app .hud.tl{grid-column:1;grid-row:2}
+#yut-app .hud.tr{grid-column:3;grid-row:2}
+#yut-app .card{background:rgba(255,248,231,.96);border:1.5px solid #977957;border-radius:11px;box-shadow:3px 4px 0 rgba(133,95,45,.12)}
+#yut-app .eyebrow{font-size:clamp(10px,.75vw,13px);letter-spacing:.16em;font-weight:700;color:#8c6c46;text-transform:none}
+#yut-app .turn{overflow:hidden;position:relative;padding:clamp(18px,1.5vw,26px);border-color:#856745}
+#yut-app .turn::before{content:"";position:absolute;left:0;right:0;top:0;height:5px;background:var(--tc)}
+#yut-app .turn-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#yut-app .turn-badge{font-size:clamp(11px,.82vw,15px);font-weight:700;border-radius:7px;padding:4px 8px;color:var(--tc);background:color-mix(in srgb,var(--tc) 10%,#fff)}
+#yut-app .turn-hero{height:clamp(100px,15.7vh,176px);display:flex;align-items:flex-end;justify-content:center;margin:8px 0 12px;position:relative}
+#yut-app .turn-hero::before{content:"";position:absolute;bottom:4px;width:73%;height:76%;border-radius:50% 50% 38% 38%;background:color-mix(in srgb,var(--tc) 9%,#f9f6eb)}
+#yut-app .turn-hero::after{content:"";position:absolute;bottom:0;width:55%;height:12px;border-radius:50%;background:rgba(58,68,37,.09);filter:blur(4px)}
+#yut-app .turn-hero .spr{height:100%;max-width:100%;width:auto;position:relative;z-index:1;object-fit:contain;filter:drop-shadow(0 7px 5px rgba(65,65,43,.08))}
+#yut-app .who{font-size:clamp(27px,2.45vw,44px);font-weight:800;letter-spacing:-.06em;line-height:1.2;word-break:keep-all;overflow-wrap:anywhere;margin-top:8px}
+#yut-app .turn .what{color:#806e54;font-size:clamp(13px,.97vw,18px);margin-top:8px;line-height:1.5;word-break:keep-all}
+#yut-app .turn .what b{font-weight:700;color:var(--forest)}
+#yut-app .pendrow{padding:clamp(15px,1.3vw,24px)}
+#yut-app .label-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 13px}
+#yut-app .lbl{font-size:clamp(13px,1vw,18px);font-weight:700;letter-spacing:-.04em;margin:0}
+#yut-app .quantity{font-size:11px;color:#99815e;white-space:nowrap}
+#yut-app .pend{display:flex;flex-wrap:wrap;gap:8px;max-height:clamp(104px,16vh,160px);overflow-y:auto;scrollbar-width:thin}
+#yut-app .pchip{display:flex;align-items:center;gap:6px;border-radius:10px;background:#f7eacd;border:1.5px solid #b39970;padding:8px 11px;white-space:nowrap;color:var(--forest);font-size:clamp(20px,1.65vw,29px);font-weight:800;letter-spacing:-.06em;line-height:1.1}
+#yut-app .pchip small{font-weight:500;font-size:11px;letter-spacing:0;color:#8a7657}
+#yut-app .pchip.bonus{background:#f5e0a7;border-color:#bc9237;color:#805b1e}
+#yut-app .pchip.bonus small{color:#aa8e57}
+#yut-app .pchip.sel{box-shadow:inset 0 0 0 1.5px var(--forest);background:#ead8ad}
+#yut-app .none{font-size:clamp(12px,.94vw,16px);color:#998565;padding:2px 0 5px}
+#yut-app .steps{display:flex;flex-direction:column;gap:clamp(12px,1.8vh,22px);padding:0 5px 10px}
+#yut-app .step{display:flex;gap:11px;align-items:center;color:#a49070;font-size:clamp(12px,.94vw,17px);font-weight:500;letter-spacing:-.03em}
+#yut-app .step .num{display:grid;place-items:center;flex:none;width:26px;height:26px;border-radius:50%;border:1px solid #d8ddcc;font-size:11px;font-weight:700;background:rgba(255,255,255,.4)}
+#yut-app .step.active{color:var(--forest);font-weight:700}
+#yut-app .step.active .num{background:var(--forest);border-color:var(--forest);color:#fff;box-shadow:0 0 0 4px rgba(49,93,76,.07)}
+#yut-app .step.complete .num{background:#e7eddf;color:#7f9673;border-color:#d3deca}
+#yut-app .hint{border-left:2px solid #c8d2bd;padding:3px 0 3px 12px;font-size:clamp(11px,.86vw,15px);color:#937c59;line-height:1.65;margin-top:auto;margin-bottom:20px;word-break:keep-all}
+#yut-app .hint b{font-weight:700;color:#79613e}
+#yut-app .teams-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 2px;margin:0 0 2px}
+#yut-app .teams-heading h2{font-size:clamp(15px,1.12vw,21px);font-weight:800;margin:0;letter-spacing:-.05em}
+#yut-app .teams-heading span{font-size:clamp(11px,.8vw,14px);color:#907857}
+#yut-app .teams{display:flex;flex-direction:column;gap:clamp(9px,1.3vh,15px)}
+#yut-app .team{display:grid;grid-template-columns:clamp(44px,4vw,70px) minmax(0,1fr) auto;column-gap:clamp(9px,1vw,17px);row-gap:clamp(9px,1.1vh,13px);align-items:center;padding:clamp(13px,1.3vw,24px) clamp(12px,1.15vw,22px);background:rgba(255,247,228,.9);border:1.5px solid #aa8b63;border-radius:10px;position:relative;transition:border-color .2s,background .2s;overflow:hidden}
+#yut-app .team.now{border-color:var(--tc);background:color-mix(in srgb,var(--tc) 6%,#fff4da);box-shadow:3px 4px 0 rgba(133,95,45,.12)}
+#yut-app .team.now::before{content:"";position:absolute;left:0;top:18%;bottom:18%;width:4px;background:var(--tc);border-radius:0 4px 4px 0}
+#yut-app .av{border-radius:50%;background:color-mix(in srgb,var(--tc) 10%,#f8f7ef);display:grid;place-items:center;overflow:hidden;position:relative;flex:none;align-self:center;width:100%;aspect-ratio:1}
+#yut-app .av .spr,#yut-app .av img,#yut-app .av svg{display:block;width:100%;height:100%;object-fit:contain;align-self:end}
+#yut-app .tname{font-size:clamp(17px,1.3vw,25px);font-weight:800;line-height:1.2;letter-spacing:-.06em;overflow-wrap:anywhere}
+#yut-app .tstat{font-size:clamp(10px,.8vw,14px);color:#947e5d;margin-top:5px;white-space:nowrap}
+#yut-app .finish-count{font-size:clamp(23px,2vw,36px);font-weight:700;color:var(--tc);letter-spacing:-.07em;text-align:right;line-height:1}
+#yut-app .finish-count small{font-size:clamp(11px,.78vw,14px);font-weight:400;color:#9b8968;letter-spacing:0;padding-left:2px}
+#yut-app .team-progress{grid-column:1/-1;display:flex;gap:5px;align-items:center}
+#yut-app .dots{display:flex;gap:5px;flex:1}
+#yut-app .dot{display:block;flex:1;height:5px;border-radius:3px;background:#e6e8da}
+#yut-app .dot.on{background:color-mix(in srgb,var(--tc) 37%,#efeee3)}
+#yut-app .dot.out{background:var(--tc)}
+#yut-app .tag{display:inline-flex;align-items:center;font-size:10px;font-weight:700;letter-spacing:-.02em;color:var(--tc);background:color-mix(in srgb,var(--tc) 11%,#fff);border-radius:4px;padding:3px 6px;white-space:nowrap;line-height:1}
+#yut-app .team.gone .tag{color:#92712f;background:#f5ecd4}
+#yut-app .legend{display:flex;justify-content:flex-end;gap:10px;font-size:clamp(10px,.76vw,13px);color:#9a8564;padding:0 2px;align-items:center;flex-wrap:wrap}
+#yut-app .legend span{display:flex;align-items:center;gap:4px;white-space:nowrap}
+#yut-app .legend i{width:7px;height:7px;border-radius:50%;background:#e0e3d4}
+#yut-app .legend i.on{background:#b8c6a5}
+#yut-app .legend i.out{background:var(--forest)}
+#yut-app .rule-card{margin-top:auto;padding:clamp(13px,1.2vw,21px);margin-bottom:20px;border-radius:14px;background:#efe1bd;color:#887047;line-height:1.65;font-size:clamp(11px,.82vw,15px);word-break:keep-all}
+#yut-app .rule-card b{display:block;font-weight:700;color:#78603c;margin-bottom:4px}
+
+/* The center is reserved for the entire board, including upright characters. */
+#yut-app .stage{grid-column:2;grid-row:2;position:relative;min-width:0;min-height:0;perspective:2400px;perspective-origin:50% 30%;display:grid;place-items:center;z-index:2}
+#yut-app .board-kicker{position:absolute;top:clamp(13px,2vh,25px);left:0;right:0;display:flex;justify-content:center;align-items:center;gap:8px;z-index:3;color:#947545;font-size:clamp(11px,.9vw,16px);letter-spacing:-.02em;white-space:nowrap;pointer-events:none}
+#yut-app .board-kicker::before,#yut-app .board-kicker::after{content:"";width:28px;height:1px;background:#c7cfba}
+#yut-app .board-foot{position:absolute;left:0;right:0;bottom:clamp(8px,1.5vh,18px);text-align:center;color:#998160;font-size:clamp(11px,.82vw,15px);letter-spacing:.035em;pointer-events:none}
+#yut-app .plane{position:relative;transform-style:preserve-3d;transform:translateY(var(--dy,0px)) rotateX(var(--tilt)) rotateZ(45deg);width:var(--B);height:var(--B);border-radius:5%;background:radial-gradient(75% 65% at 28% 23%,rgba(255,251,225,.62),transparent 80%),repeating-linear-gradient(90deg,rgba(132,84,37,.055) 0 1px,transparent 1px 7px),#e5cd9d;border:calc(var(--B)*.004) solid #9a764a;box-shadow:1px 1px 0 var(--wood),2px 2px 0 var(--wood),3px 3px 0 var(--wood),4px 4px 0 var(--wood),5px 5px 0 var(--wood),6px 6px 0 var(--wood),7px 7px 0 var(--wood),8px 8px 0 var(--wood),9px 9px 0 var(--wood-d),10px 10px 0 var(--wood-d),11px 11px 0 var(--wood-d),12px 12px 0 var(--wood-d),26px 32px 34px rgba(69,65,37,.16)}
+#yut-app .plane::before{content:"";position:absolute;inset:2.3%;border:calc(var(--B)*.003) solid #b9a786;border-radius:3.3%;box-shadow:inset 0 0 0 calc(var(--B)*.003) rgba(255,255,255,.35);pointer-events:none}
+#yut-app .plane::after{content:"";position:absolute;inset:4%;border:1px solid rgba(185,167,134,.35);border-radius:2.2%;pointer-events:none}
+#yut-app .roads{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+#yut-app .tiles,#yut-app .marks,#yut-app .pieces{position:absolute;inset:0;transform-style:preserve-3d}
+#yut-app .roads .rd{fill:none;stroke:#9d8057;stroke-width:1.15;stroke-linecap:round;stroke-linejoin:round}
+#yut-app .roads .rd2{fill:none;stroke:#f6e7c2;stroke-width:.35;stroke-linecap:round;stroke-dasharray:1.1 1.5}
+#yut-app .roads .pv{fill:none;stroke:var(--gc,var(--forest));stroke-width:1.15;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2 1.5;opacity:.85;animation:yutMarch 1s linear infinite}
+@keyframes yutMarch{to{stroke-dashoffset:-7}}
+#yut-app .tile{position:absolute;transform:translate(-50%,-50%);width:calc(var(--B)*.064);height:calc(var(--B)*.064);border-radius:50%;border:calc(var(--B)*.0025) solid #c0af8c;background:radial-gradient(circle at 35% 25%,#fffdf3,#f2e9cf 65%,#dfd3b7);display:grid;place-items:center;box-shadow:1px 1px 0 #c3b090,2px 2px 0 #c3b090,3px 3px 0 #b19e7b,5px 6px 6px rgba(97,83,48,.13)}
+#yut-app .tile span{font-size:calc(var(--B)*.025);transform:rotate(-45deg);color:#9d9275;font-weight:500}
+#yut-app .tile.big{width:calc(var(--B)*.095);height:calc(var(--B)*.095);background:radial-gradient(circle at 35% 25%,#f7efd8,#e5d6b6 80%);border-color:#b5a17e}
+#yut-app .tile.big.mid{border-color:#ab8b55;background:radial-gradient(circle at 35% 25%,#fff0c9,#e4c98b 90%)}
+#yut-app .tile.big::after{content:"";position:absolute;inset:15%;border-radius:inherit;border:calc(var(--B)*.002) solid rgba(150,137,105,.32)}
+#yut-app .pt{position:absolute;width:0;height:0;transform-style:preserve-3d}
+#yut-app .up{position:absolute;left:0;top:0;transform-origin:0 0;transform:rotateZ(-45deg) rotateX(calc(-1*var(--tilt))) translate(-50%,-100%)}
+#yut-app .sign{white-space:nowrap;font-size:calc(var(--B)*.025);line-height:1;font-weight:700;color:#7d8067;background:rgba(251,248,235,.9);padding:.35em .6em;border-radius:.45em;position:relative;box-shadow:0 .12em .5em rgba(69,65,37,.07);letter-spacing:-.04em}
+#yut-app .sign.red{color:#ad7452;background:#fff6e6}
+#yut-app .sign::after{content:"";position:absolute;top:100%;left:50%;width:1px;height:calc(var(--B)*.014);background:#a7a18b}
+#yut-app .spot{position:absolute;transform:translate(-50%,-50%);width:calc(var(--B)*.098);height:calc(var(--B)*.098);border-radius:50%;border:calc(var(--B)*.004) dashed var(--gc);background:color-mix(in srgb,var(--gc) 18%,transparent);animation:yutPulse 1.4s ease-in-out infinite}
+#yut-app .spot.exit{border-style:solid;background:color-mix(in srgb,var(--gc) 18%,#fffdf2)}
+@keyframes yutPulse{50%{transform:translate(-50%,-50%) scale(1.12)}}
+#yut-app .poof{position:absolute;transform:translate(-50%,-50%);width:calc(var(--B)*.11);height:calc(var(--B)*.11);border-radius:50%;border:calc(var(--B)*.008) solid var(--red);animation:yutPoof .7s ease-out forwards}
+@keyframes yutPoof{to{transform:translate(-50%,-50%) scale(2.4);opacity:0}}
+#yut-app .olab{position:relative;min-width:1.8em;text-align:center;font-size:calc(var(--B)*.033);font-weight:800;line-height:1.05;padding:.3em .5em;border-radius:.45em;background:#fffdf4;color:var(--gc);border:calc(var(--B)*.0035) solid var(--gc);box-shadow:0 .15em .45em rgba(54,68,37,.13);white-space:nowrap;margin-bottom:calc(var(--B)*.12);animation:yutLabel 1.4s ease-in-out infinite}
+#yut-app .olab small{display:block;font-size:.54em;line-height:1.35;opacity:.8;font-weight:600;margin-top:.3em}
+#yut-app .olab::after{content:"";position:absolute;left:50%;top:100%;transform:translateX(-50%);border:calc(var(--B)*.01) solid transparent;border-top-color:var(--gc)}
+#yut-app .olab.exit{background:var(--forest);color:#fff;border-color:var(--forest);margin-bottom:calc(var(--B)*.05)}
+@keyframes yutLabel{50%{transform:translateY(-4px)}}
+/* Character bases identify the team even when avatars resemble one another. */
+#yut-app .base{position:absolute;left:0;top:0;width:calc(var(--B)*.071);height:calc(var(--B)*.071);transform:translate(-50%,-50%);border-radius:50%;background:color-mix(in srgb,var(--tc) 70%,#fff);border:calc(var(--B)*.004) solid #fffcf1;box-shadow:0 0 0 calc(var(--B)*.0025) var(--tc),2px 3px 0 color-mix(in srgb,var(--tc) 72%,#4b4b32);opacity:.94}
+#yut-app .shd{position:absolute;left:0;top:0;width:calc(var(--B)*.095);height:calc(var(--B)*.079);transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side,rgba(63,64,41,.27),transparent)}
+#yut-app .ring{position:absolute;left:0;top:0;width:calc(var(--B)*.108);height:calc(var(--B)*.108);transform:translate(-50%,-50%);border-radius:50%;border:calc(var(--B)*.004) dashed var(--tc);opacity:.85;animation:yutPulse 1.3s ease-in-out infinite}
+#yut-app .pc.sel .ring{border-style:solid;border-width:calc(var(--B)*.005);box-shadow:0 0 0 calc(var(--B)*.003) #fff9e7;background:color-mix(in srgb,var(--tc) 12%,transparent)}
+#yut-app .lift,#yut-app .face,#yut-app .lean{position:relative;display:flex;flex-direction:column;align-items:center}
+#yut-app .face.flip{transform:scaleX(-1)}
+#yut-app .figs{position:relative;display:flex;align-items:flex-end;justify-content:center}
+#yut-app .fig{position:relative;display:block;filter:drop-shadow(0 3px 2px rgba(67,57,36,.10))}
+#yut-app .fig.back1,#yut-app .fig.back2,#yut-app .fig.back3{position:absolute;left:0;bottom:0}
+#yut-app .fig .spr{height:100%;width:auto;max-width:none;display:block;object-fit:contain}
+#yut-app .k-walk .fig{height:calc(var(--B)*.15)}
+#yut-app .k-fly .fig{height:calc(var(--B)*.10)}
+#yut-app .k-roll .fig{height:calc(var(--B)*.105)}
+#yut-app .k-fly .lift{margin-bottom:calc(var(--B)*.027)}
+#yut-app .fig.back1{transform:translate(calc(var(--B)*-.03),calc(var(--B)*-.014)) scale(.92);filter:brightness(.96)}
+#yut-app .fig.back2{transform:translate(calc(var(--B)*.03),calc(var(--B)*-.022)) scale(.86);filter:brightness(.92)}
+#yut-app .fig.back3{transform:translate(0,calc(var(--B)*-.032)) scale(.8);filter:brightness(.88)}
+#yut-app .cnt{position:absolute;right:calc(var(--B)*-.03);top:calc(var(--B)*-.012);min-width:calc(var(--B)*.035);height:calc(var(--B)*.035);padding:0 .2em;z-index:2;border-radius:999px;background:var(--forest);color:#fff;border:calc(var(--B)*.0025) solid #fffdf2;font-size:calc(var(--B)*.024);font-weight:800;display:grid;place-items:center;line-height:1;box-shadow:0 2px 6px rgba(49,64,40,.15)}
+#yut-app .pc.ghostnew .figs{opacity:.65}
+#yut-app .pc.ghostnew.sel .figs{opacity:1}
+#yut-app .pc.can .lift{animation:yutBob 1.4s ease-in-out infinite}
+#yut-app .pc.sel .lift{animation:yutBob .7s ease-in-out infinite}
+@keyframes yutBob{50%{transform:translateY(calc(var(--B)*-.012))}}
+#yut-app .k-fly .wingF,#yut-app .k-fly .wingB{animation:yutFlap 1.1s ease-in-out infinite}
+#yut-app .k-fly .wingB{animation-delay:-.05s}
+@keyframes yutFlap{50%{transform:scaleY(.55)}}
+#yut-app .walking .legL,#yut-app .walking .armB{animation:yutLegA var(--per,.38s) ease-in-out infinite}
+#yut-app .walking .legR,#yut-app .walking .armF{animation:yutLegB var(--per,.38s) ease-in-out infinite}
+#yut-app .walking .lean{animation:yutWalkLean calc(var(--per,.38s)*2) ease-in-out infinite}
+#yut-app .walking .fig.front{animation:yutStep var(--per,.38s) ease-in-out infinite}
+@keyframes yutLegA{0%,100%{transform:rotate(24deg)}50%{transform:rotate(-24deg)}}
+@keyframes yutLegB{0%,100%{transform:rotate(-24deg)}50%{transform:rotate(24deg)}}
+@keyframes yutWalkLean{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@keyframes yutStep{50%{transform:translateY(calc(var(--B)*-.013))}}
+#yut-app .flying .wingF,#yut-app .flying .wingB{animation:yutFlapHard .22s ease-in-out infinite}
+#yut-app .flying .lean{animation:yutSwoop .55s ease-in-out infinite}
+@keyframes yutFlapHard{50%{transform:scaleY(-.6)}}
+@keyframes yutSwoop{0%,100%{transform:rotate(-5deg) scaleY(1)}50%{transform:rotate(5deg) scaleY(.92)}}
+#yut-app .rolling .fig.front .spr{animation:yutSpin var(--per,.38s) linear infinite;transform-origin:50% 57%}
+#yut-app .rolling .fig.front{animation:yutStep calc(var(--per,.38s)/2) ease-in-out infinite}
+@keyframes yutSpin{to{transform:rotate(360deg)}}
+#yut-app .call{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:6}
+#yut-app .call .call-box{display:flex;flex-direction:column;align-items:center;background:rgba(255,253,244,.97);border:1px solid #e0d6b8;border-radius:25px;box-shadow:0 20px 60px rgba(66,64,38,.16);padding:clamp(24px,3vw,50px) clamp(34px,4vw,70px);opacity:0;transform:translateY(12px) scale(.9);max-width:95%}
+#yut-app .call .call-box strong{font-size:clamp(48px,5.6vw,108px);font-weight:900;letter-spacing:-.09em;line-height:1.1;white-space:nowrap;color:var(--forest)}
+#yut-app .call .call-box small{font-size:clamp(16px,1.6vw,27px);color:#8b927c;margin-top:10px;white-space:nowrap;font-weight:500;letter-spacing:-.045em}
+#yut-app .call .call-box.go{animation:yutCall 1.5s cubic-bezier(.2,.8,.25,1) forwards}
+@keyframes yutCall{0%{opacity:0;transform:translateY(12px) scale(.9)}17%,75%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-8px) scale(1.02)}}
+#yut-app .footer{grid-column:1/-1;grid-row:3;position:relative;z-index:5;display:flex;align-items:center;gap:18px;border-top:1px solid var(--line);font-size:clamp(12px,.92vw,17px);color:#7f8c78;min-width:0}
+#yut-app .live-pill{display:flex;align-items:center;gap:7px;white-space:nowrap;flex:none;font-weight:700;letter-spacing:.06em;font-size:clamp(10px,.72vw,13px);color:#688160}
+#yut-app .live-pill i{width:5px;height:5px;border-radius:50%;background:#7d9f68}
+#yut-app .log{min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.02em}
+#yut-app .log b{color:#537153;font-weight:700}
+#yut-app .footer-note{white-space:nowrap;color:#a6aa96;font-size:clamp(10px,.75vw,13px)}
+#yut-app .screen-notice{position:absolute;bottom:calc(clamp(56px,7vh,78px) + 12px);left:50%;transform:translateX(-50%);z-index:20;background:#4e654c;color:#fffdf4;box-shadow:0 5px 25px #41513625;border-radius:999px;padding:10px 20px;max-width:90%;font-size:14px;line-height:1.5;text-align:center}
+#yut-app .screen-notice:empty{display:none}
+#yut-app .overlay{position:absolute;inset:0;background:rgba(37,56,43,.45);backdrop-filter:blur(7px);display:grid;place-items:center;z-index:10;padding:32px}
+#yut-app .win{width:min(680px,90vw);max-height:calc(100vh - 64px);overflow:auto;padding:clamp(28px,3vw,56px);border-radius:30px;background:#fffbef;border:1px solid #fff9e4;box-shadow:0 24px 80px rgba(21,42,28,.21);text-align:center}
+#yut-app .win .winner-art{display:flex;align-items:center;justify-content:center;height:clamp(92px,17vh,180px);position:relative;margin-bottom:10px}
+#yut-app .win .winner-art .spr{height:100%;width:auto;max-width:80%;object-fit:contain;filter:drop-shadow(0 9px 7px rgba(64,61,35,.16))}
+#yut-app .win .winner-mark{color:#ad8a42;font-size:12px;letter-spacing:.2em;font-weight:700}
+#yut-app .win h2{font-size:clamp(30px,3.7vw,58px);font-weight:800;letter-spacing:-.08em;line-height:1.15;margin:10px 0;color:var(--forest);overflow-wrap:anywhere}
+#yut-app .win .win-sub{color:#92967d;font-size:15px;margin:0 0 22px}
+#yut-app .rank{display:grid;gap:8px;margin:0 0 20px;text-align:left}
+#yut-app .rank-row{display:flex;align-items:center;gap:15px;padding:10px 14px;border-radius:12px;background:#f1f2e5;font-size:clamp(16px,1.25vw,23px);font-weight:700;letter-spacing:-.05em}
+#yut-app .rank-row:first-child{background:#e5ecd9;border:1px solid #cfdbbe}
+#yut-app .rank-row .rank-no{color:#7f9270;font-size:14px;font-weight:600;width:25px;flex:none}
+#yut-app .rank-row .av{width:42px;height:42px}
+#yut-app .rank-row .rank-team{flex:1}
+#yut-app .rank-row .rank-state{font-size:12px;color:#8c9980;font-weight:500;white-space:nowrap}
+#yut-app .win .tool-btn{margin:0 auto;background:#fffaf0;padding:9px 18px;min-height:38px}
+#yut-app .show-results{display:none}
+#yut-app.is-over .show-results{display:flex}
+#yut-app .confetti{position:absolute;inset:0;pointer-events:none;z-index:12;overflow:hidden}
+#yut-app .confetti i{position:absolute;top:-20px;width:9px;height:13px;border-radius:2px;animation:yutFall linear forwards}
+@keyframes yutFall{to{transform:translateY(110vh) rotate(600deg)}}
+@media(max-height:760px){
+ #yut-app{grid-template-rows:70px minmax(0,1fr) 52px}
+ #yut-app .hud{padding-top:8px;gap:12px}
+ #yut-app .turn{padding:16px}
+ #yut-app .turn-hero{height:103px;margin:4px 0 7px}
+ #yut-app .turn .who{font-size:28px}
+ #yut-app .turn .what{font-size:13px;margin-top:5px}
+ #yut-app .pendrow{padding:14px 16px}
+ #yut-app .label-row{margin-bottom:9px}
+ #yut-app .pchip{padding:7px 10px;font-size:22px}
+ #yut-app .steps{gap:12px}
+ #yut-app .hint{margin-bottom:12px;font-size:11px}
+ #yut-app .team{padding:13px 14px;row-gap:9px}
+ #yut-app .teams{gap:10px}
+ #yut-app .rule-card{padding:13px 15px;margin-bottom:12px;font-size:11px}
+ #yut-app .win .winner-art{display:flex;align-items:center;justify-content:center;height:90px}
+ #yut-app .win{padding:25px 36px}
+ #yut-app .rank-row{padding:7px 12px}
+}
+@media(max-width:1100px){
+ #yut-app{--panel:190px;--right:207px;column-gap:12px;padding:0 16px}
+ #yut-app .cloth{gap:10px}
+ #yut-app .cloth .sub{font-size:12px}
+ #yut-app .header-actions{gap:6px}
+ #yut-app .tool-btn{padding:8px;font-size:11px}
+ #yut-app .connection{padding-right:4px;font-size:10px}
+ #yut-app .turn{padding:14px}
+ #yut-app .team{padding:12px 11px;grid-template-columns:39px minmax(0,1fr) auto;column-gap:8px}
+ #yut-app .tname{font-size:17px}
+ #yut-app .finish-count{font-size:23px}
+ #yut-app .turn .who{font-size:27px}
+ #yut-app .board-kicker{font-size:10px}
+ #yut-app .board-kicker::before,#yut-app .board-kicker::after{width:12px}
+ #yut-app .footer-note{display:none}
+}
+@media(max-width:760px){
+ #yut-app{--panel:148px;grid-template-columns:var(--panel) minmax(0,1fr);grid-template-rows:64px minmax(0,1fr) auto 45px;padding:0 10px;column-gap:8px}
+ #yut-app .banner{margin-bottom:8px;gap:10px}
+ #yut-app .brand{gap:9px}
+ #yut-app .brandmark{width:32px;height:32px;border-radius:10px}
+ #yut-app .cloth h1{font-size:17px}
+ #yut-app .cloth .sub,#yut-app .connection span,#yut-app .tool-btn .tool-label{display:none}
+ #yut-app .header-actions{gap:5px}
+ #yut-app .connection{padding:0 4px 0 0}
+ #yut-app .tool-btn{min-height:31px;padding:7px}
+ #yut-app .hud{gap:10px;padding-top:8px}
+ #yut-app .hud.tr{grid-column:1/-1;grid-row:3;padding-top:8px;padding-bottom:8px;gap:6px}
+ #yut-app .teams-heading,#yut-app .legend,#yut-app .rule-card{display:none}
+ #yut-app .teams{display:grid;grid-template-columns:repeat(var(--team-count,4),minmax(0,1fr));gap:6px}
+ #yut-app .team{padding:10px 8px;grid-template-columns:30px minmax(0,1fr);column-gap:6px;row-gap:8px;border-radius:12px}
+ #yut-app .team .av{width:30px}
+ #yut-app .tname{font-size:13px}
+ #yut-app .tstat{font-size:8px;margin-top:3px}
+ #yut-app .finish-count{position:absolute;right:8px;bottom:8px;font-size:16px}
+ #yut-app .finish-count small{font-size:8px}
+ #yut-app .team-progress{margin-right:35px}
+ #yut-app .team-progress .tag{display:none}
+ #yut-app .dot{height:4px}
+ #yut-app .dots{gap:3px}
+ #yut-app .turn{padding:12px;border-radius:14px}
+ #yut-app .turn-hero{height:100px;margin:4px 0}
+ #yut-app .eyebrow{font-size:8px;letter-spacing:.11em}
+ #yut-app .turn-badge{font-size:9px;padding:3px 5px}
+ #yut-app .turn .who{font-size:23px}
+ #yut-app .turn .what{font-size:11px}
+ #yut-app .pendrow{padding:12px;border-radius:14px}
+ #yut-app .lbl{font-size:12px}
+ #yut-app .quantity{font-size:9px}
+ #yut-app .pend{gap:5px;max-height:95px}
+ #yut-app .pchip{padding:6px 7px;font-size:19px;border-radius:7px}
+ #yut-app .pchip small{font-size:9px}
+ #yut-app .none{font-size:10px}
+ #yut-app .steps{gap:10px;padding-left:3px}
+ #yut-app .step{gap:7px;font-size:10px}
+ #yut-app .step .num{width:21px;height:21px;font-size:9px}
+ #yut-app .hint{display:none}
+ #yut-app .board-kicker{top:14px;font-size:9px;white-space:normal;text-align:center;word-break:keep-all}
+ #yut-app .board-kicker::before,#yut-app .board-kicker::after{display:none}
+ #yut-app .board-foot{font-size:9px;bottom:10px}
+ #yut-app .footer{grid-row:4;gap:10px;font-size:10px}
+ #yut-app .live-pill{font-size:8px;gap:4px}
+ #yut-app .call .call-box{padding:20px 25px;border-radius:18px}
+ #yut-app .call .call-box strong{font-size:38px}
+ #yut-app .call .call-box small{font-size:13px}
+}
+@media(prefers-reduced-motion:reduce){
+ #yut-app *,#yut-app *::before,#yut-app *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+ #yut-app .call .call-box.go{opacity:1;transform:none}
+}
+
+/* A village-festival frame: the play area and its geometry stay unchanged. */
+#yut-app .festival-flags{position:absolute;top:-2px;width:clamp(132px,16.5vw,270px);height:auto;z-index:7;pointer-events:none;opacity:.9}
+#yut-app .flags-left{left:0;transform:rotate(2deg);transform-origin:0 0}
+#yut-app .flags-right{right:0;transform:scaleX(-1) rotate(2deg);transform-origin:center top}
+#yut-app .landscape{opacity:.15}
+#yut-app .banner{display:grid;grid-template-columns:var(--panel) minmax(0,1fr) var(--right);column-gap:clamp(14px,1.6vw,30px);border-bottom:1px solid rgba(151,112,63,.28)}
+#yut-app .brand{grid-column:2;justify-content:center;gap:0;position:relative;z-index:2}
+#yut-app .cloth{position:relative;display:flex;align-items:center;justify-content:center;gap:clamp(9px,1vw,18px);max-width:100%;padding:5px clamp(13px,1.2vw,24px) 7px;background:repeating-linear-gradient(0deg,rgba(128,83,34,.035) 0 1px,transparent 1px 4px),#fff4d8;border:1px solid #b39767;border-top:3px solid #a34830;border-radius:2px 2px 8px 8px;box-shadow:0 3px 0 rgba(124,84,36,.13),inset 0 -5px 0 rgba(209,178,116,.14)}
+#yut-app .cloth::before,#yut-app .cloth::after{content:"";position:absolute;bottom:100%;width:1px;height:20px;background:#93724b;pointer-events:none}
+#yut-app .cloth::before{left:23px}
+#yut-app .cloth::after{right:23px}
+#yut-app .cloth h1{font-family:var(--f-title);font-size:clamp(30px,2.8vw,48px);font-weight:400;letter-spacing:-.035em;line-height:1.03;color:#493321;min-width:0;padding:0 0 2px;text-shadow:0 1px 0 #fff9e9}
+#yut-app .cloth .sub{font-family:var(--f-hand);font-size:clamp(14px,1.05vw,18px);font-weight:400;color:#96703e;letter-spacing:0;flex:none}
+#yut-app .festival-seal{font-family:var(--f-hand);font-size:14px;font-weight:400;line-height:.9;text-align:center;color:#fff4d8;background:var(--red);border:1px solid #9f3c26;outline:1px solid rgba(185,78,53,.4);outline-offset:2px;border-radius:2px;flex:none;padding:4px 3px;transform:rotate(-6deg);box-shadow:inset 0 0 0 1px rgba(255,241,207,.35)}
+#yut-app .header-actions{grid-column:3;justify-self:end;gap:6px;position:relative;z-index:3;margin-top:9px}
+#yut-app .connection{font-size:12px;padding-right:4px;color:#85734f}
+#yut-app .tool-btn{border:1px solid #bfa47a;border-radius:6px;background:rgba(255,246,224,.85);color:#755734;padding:7px;box-shadow:0 2px 0 rgba(128,91,40,.09)}
+#yut-app .tool-btn:hover{background:#fff8e6}
+#yut-app .eyebrow{letter-spacing:.04em}
+#yut-app .who,#yut-app .lbl,#yut-app .pchip,#yut-app .teams-heading h2,#yut-app .tname,#yut-app .sign,#yut-app .win h2,#yut-app .rank-row .rank-name{font-family:var(--f-hand);font-weight:400;letter-spacing:-.025em}
+#yut-app .turn .who{line-height:1.22}
+#yut-app .lbl{font-size:clamp(17px,1.25vw,22px)}
+#yut-app .teams-heading h2{font-size:clamp(19px,1.5vw,25px)}
+#yut-app .tname{font-size:clamp(21px,1.6vw,29px)}
+#yut-app .turn-badge{border-radius:4px;color:#8b552e;background:#f1dfb4;border:1px solid #d5b577}
+#yut-app .turn-hero::before{background:color-mix(in srgb,var(--tc) 8%,#f3e4bf)}
+#yut-app .pchip{border-radius:6px}
+#yut-app .pchip small{font-family:var(--f-body)}
+#yut-app .step .num{border-color:#cbb186;border-radius:6px;background:#fff4d9;color:#967a52}
+#yut-app .step.active{color:#9d472f}
+#yut-app .step.active .num{background:var(--red);border-color:#a2432d;color:#fff6de;box-shadow:2px 2px 0 rgba(138,72,39,.14)}
+#yut-app .step.complete .num{background:#e7d9b7;border-color:#c5ac7e;color:#8a7147}
+#yut-app .hint{border-left-color:#bca071}
+#yut-app .rule-card{border:1px solid #ceb486;border-radius:7px}
+#yut-app .rule-card b{font-family:var(--f-hand);font-weight:400;font-size:1.22em}
+#yut-app .dot{background:#e3d4b3}
+#yut-app .tag{background:color-mix(in srgb,var(--tc) 10%,#fff2d3)}
+#yut-app .board-kicker::before,#yut-app .board-kicker::after{background:#c3a572}
+#yut-app .plane::before{border-color:#b29566}
+#yut-app .plane::after{border-color:rgba(151,113,64,.3)}
+#yut-app .sign{color:#795b35;background:#f6e5ba;border:1px solid #aa8856;border-radius:3px;box-shadow:1px 2px 0 rgba(114,77,29,.16);font-size:calc(var(--B)*.028)}
+#yut-app .sign.red{color:#a9462f;background:#fff0cc;border-color:#b98358}
+#yut-app .sign::after{width:2px;background:#a48254}
+#yut-app .call .call-box{border:2px solid #9c7044;border-radius:9px;background:#fff2d6;box-shadow:6px 7px 0 rgba(108,75,31,.16),0 18px 60px rgba(90,58,21,.18)}
+#yut-app .call .call-box strong{font-family:var(--f-title);font-weight:400;letter-spacing:-.025em;color:var(--red);line-height:1.08}
+#yut-app .call .call-box small{color:#826544}
+#yut-app .footer{border-top-color:#cbb38a}
+#yut-app .live-pill{color:#a05035;letter-spacing:.02em;white-space:nowrap}
+#yut-app .live-pill i{background:var(--red);box-shadow:0 0 0 3px rgba(185,78,53,.1)}
+#yut-app .win{background:#fff3d9;border:2px solid #947046;border-radius:13px;box-shadow:7px 8px 0 rgba(102,69,28,.22),0 24px 90px rgba(54,40,21,.22)}
+#yut-app .winner-mark{color:var(--red);letter-spacing:.08em}
+#yut-app .win h2{color:#634024}
+#yut-app .rank-row{background:#f7e8c5;border-color:#d8bc88;border-radius:7px}
+#yut-app .close-results{background:var(--red);border-radius:6px}
+@media(max-width:1600px){
+ #yut-app .header-actions .tool-label{display:none}
+ #yut-app .connection{font-size:11px}
+}
+@media(max-width:1100px){
+ #yut-app .banner{column-gap:12px}
+ #yut-app .cloth{gap:9px;padding:6px 12px 7px}
+ #yut-app .cloth h1{font-size:32px}
+ #yut-app .cloth .sub{display:none!important}
+ #yut-app .tname{font-size:21px}
+ #yut-app .teams-heading h2{font-size:19px}
+ #yut-app .connection{font-size:10px;padding-right:1px}
+}
+@media(max-height:760px) and (min-width:761px){
+ #yut-app .cloth{padding-top:4px;padding-bottom:5px}
+ #yut-app .cloth h1{font-size:34px}
+ #yut-app .festival-seal{font-size:12px;padding:3px}
+ #yut-app .festival-flags{max-width:190px}
+ #yut-app .turn .who{font-size:31px}
+ #yut-app .lbl{font-size:17px}
+}
+@media(max-width:760px){
+ #yut-app .festival-flags{display:none}
+ #yut-app .banner{grid-template-columns:minmax(0,1fr) auto;gap:9px}
+ #yut-app .brand{grid-column:1;justify-content:flex-start}
+ #yut-app .cloth{gap:9px;max-width:100%;padding:5px 11px 6px}
+ #yut-app .cloth h1{font-size:29px}
+ #yut-app .festival-seal{font-size:11px;padding:3px}
+ #yut-app .header-actions{grid-column:2;margin-top:3px;gap:5px}
+ #yut-app .connection{padding-right:1px}
+ #yut-app .tool-btn{padding:6px}
+ #yut-app .turn,#yut-app .pendrow,#yut-app .team{border-radius:8px}
+ #yut-app .turn .who{font-size:25px}
+ #yut-app .tname{font-size:16px}
+ #yut-app .lbl{font-size:15px}
+ #yut-app .pchip{font-size:22px}
+ #yut-app .call .call-box{border-radius:8px}
+ #yut-app .call .call-box strong{font-size:49px}
+}
+@media(max-width:480px){
+ #yut-app .cloth{gap:7px;padding:5px 8px 6px}
+ #yut-app .cloth h1{font-size:25px}
+ #yut-app .festival-seal{font-size:10px;padding:2px}
+ #yut-app .show-results{font-size:10px}
+}
