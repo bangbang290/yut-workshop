@@ -1,0 +1,42 @@
+{
+  "heungbu": {
+    "width": 480,
+    "height": 480,
+    "bounds": [
+      105,
+      8,
+      376,
+      470
+    ]
+  },
+  "nolbu": {
+    "width": 480,
+    "height": 480,
+    "bounds": [
+      110,
+      7,
+      363,
+      472
+    ]
+  },
+  "swallow": {
+    "width": 480,
+    "height": 480,
+    "bounds": [
+      15,
+      52,
+      467,
+      434
+    ]
+  },
+  "gourd": {
+    "width": 480,
+    "height": 480,
+    "bounds": [
+      49,
+      22,
+      427,
+      457
+    ]
+  }
+}
