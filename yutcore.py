@@ -1,9 +1,11 @@
 """윷놀이 말판 — 규칙과 진행 상태(서버 한 곳에 저장해서 노트북·패드가 같은 판을 봅니다).
 
-말판(HTML) 버전에서 시험을 통과한 규칙을 그대로 옮겼습니다.
+행사용 기본 규칙(지역·대회에 따라 다른 규칙은 시작 전에 합의합니다).
   · 모·뒷모·방에 '멈춘' 말만 지름길로 꺾음
-  · 업기(같은 팀 말이 같은 칸) · 잡기(상대 말은 대기로, 잡은 팀은 한 번 더)
+  · 업기(같은 팀 말이 같은 칸) · 잡기(상대 말은 대기로, 즉시 한 번 더)
+  · 윷·모로 잡으면 추가 던지기 중복 없음 · 남은 결과는 순서를 골라 사용
   · 윷·모는 한 번 더 · 빽도(왔던 길로 한 칸, 도에서 빽도면 참먹이에 섬)
+  · 기본은 참먹이를 지나야 완주 · 낙이면 미사용 결과를 버리고 다음 팀
 """
 from __future__ import annotations
 
@@ -28,7 +30,7 @@ MAX_LOG_ENTRIES = 18
 MAX_PENDING_RESULTS = 128
 MAX_BACKUP_BYTES = 2 * 1024 * 1024
 BACKUP_FORMAT = "yut-workshop-backup"
-BACKUP_SCHEMA_VERSION = 1
+BACKUP_SCHEMA_VERSION = 2
 _MAX_SAFE_INT = 2**53 - 1
 _KST = timezone(timedelta(hours=9))
 
@@ -75,7 +77,7 @@ class GameError(ValueError):
 
 
 def default_cfg() -> dict:
-    return {"teams": 4, "names": DEFAULT_NAMES[:], "pieces": 4, "backdo": True, "strictEnd": False,
+    return {"teams": 4, "names": DEFAULT_NAMES[:], "pieces": 4, "backdo": True, "strictEnd": True,
             "captureBonus": True, "title": "심사2국 워크숍", "sub": "윷놀이 한마당"}
 
 
@@ -114,7 +116,7 @@ def fresh(cfg: dict | None = None) -> dict:
     cfg = norm_cfg(cfg)
     n = cfg["teams"]
     return {"cfg": cfg, "groups": [], "home": [cfg["pieces"]] * n, "done": [0] * n, "turn": 0, "phase": "throw",
-            "pending": [], "sel": 0, "bonus": 0, "ranks": [], "log": [], "nid": 1, "started": False,
+            "pending": [], "sel": 0, "bonus": 0, "throwReason": "turn", "ranks": [], "log": [], "nid": 1, "started": False,
             "preview": None, "last": {"kind": "reset", "at": time.time()}, "ver": 0,
             "game_id": uuid.uuid4().hex}
 
@@ -140,7 +142,7 @@ def _route_at_position(route: str, idx: int) -> str:
     return route
 
 
-def plan(g, steps, strict_end=False):
+def plan(g, steps, strict_end=True):
     idx = g["idx"]
     route = _route_at_position(g["route"], idx)
     if steps < 0:                                  # 빽도: 왔던 길로 한 칸 뒤로
@@ -194,7 +196,7 @@ def tname(S, i):
 
 
 def _log(S, text):
-    S["log"] = ([text] + S["log"])[:MAX_LOG_ENTRIES]
+    S["log"] = ([text[:256]] + S["log"])[:MAX_LOG_ENTRIES]
 
 
 def _pick_sel(S):
@@ -205,23 +207,43 @@ def _pick_sel(S):
             return
 
 
+def throw_reason(S):
+    """던질 차례의 이유. 예전 판도 읽기만 하며 표시용 이유를 추론합니다."""
+    if S.get("phase") != "throw":
+        return None
+    reason = S.get("throwReason")
+    if reason in ("turn", "capture", "yut", "mo"):
+        return reason
+    pending = S.get("pending", [])
+    if pending and pending[-1] in ("yut", "mo"):
+        return pending[-1]
+    last = S.get("last")
+    if not isinstance(last, dict):
+        last = {}
+    if S.get("cfg", {}).get("captureBonus", True) and (
+            S.get("bonus", 0) > 0
+            or (last.get("kind") == "move" and last.get("team") == S.get("turn"))):
+        return "capture"
+    return "turn"
+
+
 def _next_turn(S):
     act = active_teams(S)
     if len(act) <= 1:
         if len(act) == 1 and act[0] not in S["ranks"]:
             S["ranks"].append(act[0])
-        S.update(phase="over", pending=[], sel=0, bonus=0, preview=None)
+        S.update(phase="over", pending=[], sel=0, bonus=0, preview=None, throwReason=None)
         return
     t = S["turn"]
     while True:
         t = (t + 1) % S["cfg"]["teams"]
         if t not in S["ranks"]:
             break
-    S.update(turn=t, phase="throw", pending=[], sel=0, bonus=0)
+    S.update(turn=t, phase="throw", pending=[], sel=0, bonus=0, preview=None, throwReason="turn")
 
 
 def _settle(S):
-    """쓸 수 없는 결과(판에 말이 없는데 빽도 등)를 정리하고, 다 쓰면 다음 단계로."""
+    """못 쓰는 빽도를 정리하고, 잡기 추가 던지기 → 남은 결과 → 다음 팀 순서로."""
     if S["phase"] != "move":
         return
     team = S["turn"]
@@ -234,8 +256,6 @@ def _settle(S):
         _log(S, f"판에 말이 없어 {', '.join(RES[r]['nm'] for r in removed)}는 넘어갑니다")
     if S["sel"] >= len(S["pending"]):
         S["sel"] = 0
-    if S["pending"]:
-        return
     if team in S["ranks"]:
         S["bonus"] = 0
         _next_turn(S)
@@ -243,6 +263,10 @@ def _settle(S):
     if S["bonus"] > 0:
         S["bonus"] -= 1
         S["phase"] = "throw"
+        S["throwReason"] = "capture"
+        return
+    if S["pending"]:
+        S["throwReason"] = None
         return
     _next_turn(S)
 
@@ -327,18 +351,39 @@ def apply_throw(S, r):
     S["pending"].append(r)
     S["preview"] = None
     if RES[r]["again"]:
+        S["throwReason"] = r
         _log(S, f"{tname(S, S['turn'])} {RES[r]['nm']} — 한 번 더 던집니다")
     else:
         S["phase"] = "move"
+        S["throwReason"] = None
         _pick_sel(S)
         _settle(S)
     S["last"] = {"kind": "throw", "r": r, "team": thrower, "at": time.time()}
 
 
+def apply_nak(S):
+    """낙: 판 위 말은 그대로, 이번 차례의 미사용 결과/추가 기회는 버립니다."""
+    if S["phase"] != "throw":
+        raise GameError("던질 차례에만 낙을 입력할 수 있습니다."
+                        if S["phase"] == "move" else "게임이 끝났습니다.")
+    team, discarded = S["turn"], S["pending"][:]
+    S["started"] = True
+    msg = f"{tname(S, team)} 낙 — 다음 팀 차례입니다"
+    if discarded:
+        msg += f"(남은 결과 {len(discarded)}개를 버립니다)"
+    _log(S, msg)
+    _next_turn(S)
+    S["last"] = {"kind": "nak", "team": team, "discarded": discarded, "at": time.time()}
+
+
 def apply_move(S, key):
     if S["phase"] != "move" or not S["pending"]:
         raise GameError("지금은 말을 옮길 때가 아닙니다.")
-    r = S["pending"][S["sel"]]
+    key = _piece_key(key)
+    sel = _result_index(S["sel"])
+    if sel >= len(S["pending"]):
+        raise GameError("고를 수 없는 결과입니다. 화면을 다시 확인해 주세요.")
+    r = S["pending"][sel]
     steps, team, strict = RES[r]["steps"], S["turn"], S["cfg"]["strictEnd"]
     new = key == "new"
     if new:
@@ -360,7 +405,8 @@ def apply_move(S, key):
         S["groups"].append(g)
     g["route"], g["idx"] = p["route"], p["idx"]
     msg = f"{tname(S, team)} {RES[r]['nm']}"
-    caught_at, caught_n, stacked = None, 0, False
+    caught_at, caught_n, stacked_n, bonus_awarded = None, 0, 0, False
+    caught_pieces = []
     if p["finished"]:
         S["done"][team] += g["n"]
         S["groups"] = [x for x in S["groups"] if x is not g]
@@ -373,29 +419,34 @@ def apply_move(S, key):
             if o is not g and o["team"] != team and node_of(o) == key_node:
                 S["home"][o["team"]] += o["n"]
                 caught_n += o["n"]
+                caught_pieces.append({"id": o["id"], "team": o["team"], "n": o["n"], "node": key_node})
                 names.append(tname(S, o["team"]))
             else:
                 keep.append(o)
         S["groups"] = keep
         mine = next((o for o in S["groups"] if o is not g and o["team"] == team and node_of(o) == key_node), None)
         if mine:
+            stacked_n = mine["n"]
             g["n"] += mine["n"]
             S["groups"] = [o for o in S["groups"] if o is not mine]
-            stacked = True
             msg += f" — 업었습니다(말 {g['n']}개)"
         if not caught_n and not mine:
             msg += " — 새 말이 나왔습니다" if new else (" — 한 칸 물러났습니다" if steps < 0 else " — 말을 옮겼습니다")
         if caught_n:
             caught_at = key_node
             msg += f" — {', '.join(names)} 말 {caught_n}개를 잡았습니다"
-            if S["cfg"]["captureBonus"]:
+            # 윷·모의 추가 기회는 결과를 입력할 때 이미 받았으므로 중복하지 않습니다.
+            if S["cfg"]["captureBonus"] and not RES[r]["again"]:
                 S["bonus"] += 1
+                bonus_awarded = True
                 msg += " · 한 번 더"
     _log(S, msg)
     S["pending"].pop(S["sel"])
     S["preview"] = None
-    S["last"] = {"kind": "move", "team": team, "n": start_n, "id": g["id"], "nodes": nodes, "finished": p["finished"],
-                 "caught": caught_at, "caughtN": caught_n, "stacked": stacked, "new": new, "at": time.time()}
+    S["last"] = {"kind": "move", "r": r, "team": team, "n": start_n, "id": g["id"],
+                 "nodes": nodes, "finished": p["finished"], "caught": caught_at, "caughtN": caught_n,
+                 "caughtPieces": caught_pieces, "bonusAwarded": bonus_awarded,
+                 "stacked": stacked_n > 0, "stackedN": stacked_n, "resultN": g["n"], "new": new, "at": time.time()}
     if S["done"][team] >= S["cfg"]["pieces"] and team not in S["ranks"]:
         S["ranks"].append(team)
         S["pending"], S["bonus"], S["sel"] = [], 0, 0
@@ -406,6 +457,7 @@ def apply_move(S, key):
             if rest:
                 S["ranks"].append(rest[0])
             S["phase"] = "over"
+            S["throwReason"] = None
             return
     if S["pending"]:
         _pick_sel(S)
@@ -535,6 +587,10 @@ def throw(r, expected_ver=None):
     _change(lambda S: apply_throw(S, r), expected_ver=expected_ver)
 
 
+def nak(expected_ver=None):
+    _change(apply_nak, expected_ver=expected_ver)
+
+
 def select_result(i, expected_ver=None):
     i = _result_index(i)
     def f(S):
@@ -607,6 +663,7 @@ def undo(expected_ver=None) -> bool:
         S["ver"] = cur.get("ver", 0) + 1
         S.setdefault("game_id", cur.get("game_id") or uuid.uuid4().hex)
         S["preview"] = None
+        S["throwReason"] = throw_reason(S)
         S["last"] = {"kind": "undo", "at": time.time()}
         _put(c, "game", S)
         _put(c, "hist", hist)
@@ -659,7 +716,7 @@ def _backup_text(value, label, limit, *, nonempty=False):
     return value
 
 
-def _validated_state(raw):
+def _validated_state(raw, *, schema_version=BACKUP_SCHEMA_VERSION):
     """실행 코드/그림/임의 필드는 버리고, 복원 가능한 게임 자료만 새 객체로 만듭니다."""
     if not isinstance(raw, dict) or not isinstance(raw.get("cfg"), dict):
         raise GameError("백업에 게임 설정이 없습니다.")
@@ -674,7 +731,9 @@ def _validated_state(raw):
                  "title": _backup_text(cfg.get("title"), "행사 제목", 20, nonempty=True),
                  "sub": _backup_text(cfg.get("sub", ""), "부제", 12)}
     for name in ("backdo", "strictEnd", "captureBonus"):
-        value = cfg.get(name, default_cfg()[name])
+        # 1판 백업에서 빠졌던 규칙은 당시 기본값으로 읽어 기존 선택을 바꾸지 않습니다.
+        fallback = False if schema_version == 1 and name == "strictEnd" else default_cfg()[name]
+        value = cfg.get(name, fallback)
         if type(value) is not bool:
             raise GameError("백업의 게임 규칙 설정이 올바르지 않습니다.")
         clean_cfg[name] = value
@@ -737,8 +796,28 @@ def _validated_state(raw):
     S["pending"] = pending[:]
     S["sel"] = _backup_int(raw.get("sel", 0), "선택한 결과 번호", 0, max(0, len(pending) - 1))
     S["bonus"] = _backup_int(raw.get("bonus", 0), "추가 던지기 수", 0, MAX_PENDING_RESULTS)
+    if "throwReason" in raw:
+        reason = raw["throwReason"]
+        if reason not in (None, "turn", "capture", "yut", "mo"):
+            raise GameError("백업의 추가 던지기 이유가 올바르지 않습니다.")
+    else:
+        # 예전 상태의 던지기 단계에는 윷·모만 남을 수 있었습니다.
+        # 일반 결과를 남긴 새 잡기 상태는 이유 필드가 있어야 복원합니다.
+        if phase == "throw" and any(not RES[r]["again"] for r in pending):
+            raise GameError("백업의 추가 던지기 이유가 없습니다.")
+        legacy = dict(S, last=raw.get("last"))
+        legacy.pop("throwReason", None)
+        reason = throw_reason(legacy)
+    S["throwReason"] = reason
+    if ((phase != "throw" and reason is not None)
+            or (phase == "throw" and reason is None)
+            or (reason == "turn" and pending)
+            or (reason == "capture" and not clean_cfg["captureBonus"])
+            or (reason in ("yut", "mo") and (not pending or pending[-1] != reason))
+            or (S["bonus"] and not clean_cfg["captureBonus"])):
+        raise GameError("백업의 차례와 추가 던지기 이유가 맞지 않습니다.")
     if ((phase == "move" and (not pending or not any(usable(S, r, S["turn"]) for r in pending)))
-            or (phase == "throw" and (len(pending) >= MAX_PENDING_RESULTS or any(not RES[r]["again"] for r in pending)))
+            or (phase == "throw" and len(pending) >= MAX_PENDING_RESULTS)
             or (phase == "over" and (pending or S["bonus"]))):
         raise GameError("백업의 차례와 남은 윷 결과가 맞지 않습니다.")
     logs = raw.get("log", [])
@@ -748,7 +827,8 @@ def _validated_state(raw):
     if type(raw.get("started", False)) is not bool:
         raise GameError("백업의 시작 상태가 올바르지 않습니다.")
     S["started"] = raw.get("started", False)
-    if not S["started"] and (groups or pending or ranks or any(S["done"]) or S["turn"] != 0 or phase != "throw" or S["bonus"]):
+    if not S["started"] and (groups or pending or ranks or any(S["done"]) or S["turn"] != 0
+                             or phase != "throw" or S["bonus"] or reason != "turn"):
         raise GameError("백업의 시작 상태와 말 위치가 맞지 않습니다.")
     S["ver"] = _backup_int(raw.get("ver", 0), "상태 번호", 0, _MAX_SAFE_INT)
     game_id = raw.get("game_id")
@@ -790,13 +870,13 @@ def _decode_backup(data):
             raise
         raise GameError("백업 파일을 읽지 못했습니다. 이 앱에서 내려받은 JSON 파일인지 확인해 주세요.") from exc
     if (not isinstance(obj, dict) or obj.get("format") != BACKUP_FORMAT
-            or type(obj.get("schema_version")) is not int or obj.get("schema_version") != BACKUP_SCHEMA_VERSION):
+            or type(obj.get("schema_version")) is not int or obj.get("schema_version") not in (1, BACKUP_SCHEMA_VERSION)):
         raise GameError("지원하지 않는 백업 형식입니다. 이 앱에서 내려받은 파일을 사용해 주세요.")
-    state = _validated_state(obj.get("state"))
+    state = _validated_state(obj.get("state"), schema_version=obj["schema_version"])
     history = obj.get("history", [])
     if not isinstance(history, list) or len(history) > MAX_HISTORY:
         raise GameError("백업의 되돌리기 기록 수가 올바르지 않습니다.")
-    history = [_validated_state(item) for item in history]
+    history = [_validated_state(item, schema_version=obj["schema_version"]) for item in history]
     saved_at = _backup_text(obj.get("exported_at", ""), "저장 시각", 64)
     return state, history, saved_at
 
@@ -815,9 +895,11 @@ def export_backup() -> bytes:
                 c.execute("ROLLBACK")
             c.close()
     S["preview"] = None
+    S["throwReason"] = throw_reason(S)
     for old in hist:
         old.pop("preview", None)
         old.setdefault("game_id", S["game_id"])
+        old["throwReason"] = throw_reason(old)
     payload = {"format": BACKUP_FORMAT, "schema_version": BACKUP_SCHEMA_VERSION,
                "exported_at": datetime.now(_KST).isoformat(timespec="seconds"), "state": S, "history": hist}
     data = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8")
@@ -857,5 +939,6 @@ def import_backup(data, expected_ver=None):
 def screen_state() -> dict:
     """스크린 화면에 넘길 내용(판 + 번호 붙은 후보)."""
     S = dict(get())
+    S["throwReason"] = throw_reason(S)
     S["selectable"] = selectable(S)
     return S

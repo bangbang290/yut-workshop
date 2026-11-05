@@ -133,19 +133,30 @@ header[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecorat
 #yut-app .ring{position:absolute;left:0;top:0;width:calc(var(--B)*.108);height:calc(var(--B)*.108);transform:translate(-50%,-50%);border-radius:50%;border:calc(var(--B)*.004) dashed var(--tc);opacity:.85;animation:yutPulse 1.3s ease-in-out infinite}
 #yut-app .pc.sel .ring{border-style:solid;border-width:calc(var(--B)*.005);box-shadow:0 0 0 calc(var(--B)*.003) #fff9e7;background:color-mix(in srgb,var(--tc) 12%,transparent)}
 #yut-app .lift,#yut-app .face,#yut-app .lean{position:relative;display:flex;flex-direction:column;align-items:center}
+#yut-app .lean{transform-origin:50% 100%}
 #yut-app .face.flip{transform:scaleX(-1)}
 #yut-app .figs{position:relative;display:flex;align-items:flex-end;justify-content:center}
-#yut-app .fig{position:relative;display:block;filter:drop-shadow(0 3px 2px rgba(67,57,36,.10))}
+/* Keep the riders inside the counter-rotated billboard's real bounds.
+   Top padding enlarges that surface while its bottom/feet stay anchored. */
+#yut-app .piggyback .figs{padding-top:calc(var(--B)*.08)}
+#yut-app .piggyback.k-fly .figs,#yut-app .piggyback.k-roll .figs{padding-top:calc(var(--B)*.055)}
+#yut-app .fig{position:relative;display:block;transform-origin:50% 100%;filter:drop-shadow(0 3px 2px rgba(67,57,36,.10))}
 #yut-app .fig.back1,#yut-app .fig.back2,#yut-app .fig.back3{position:absolute;left:0;bottom:0}
 #yut-app .fig .spr{height:100%;width:auto;max-width:none;display:block;object-fit:contain}
 #yut-app .k-walk .fig{height:calc(var(--B)*.15)}
 #yut-app .k-fly .fig{height:calc(var(--B)*.10)}
 #yut-app .k-roll .fig{height:calc(var(--B)*.105)}
 #yut-app .k-fly .lift{margin-bottom:calc(var(--B)*.027)}
-#yut-app .fig.back1{transform:translate(calc(var(--B)*-.03),calc(var(--B)*-.014)) scale(.92);filter:brightness(.96)}
-#yut-app .fig.back2{transform:translate(calc(var(--B)*.03),calc(var(--B)*-.022)) scale(.86);filter:brightness(.92)}
-#yut-app .fig.back3{transform:translate(0,calc(var(--B)*-.032)) scale(.8);filter:brightness(.88)}
-#yut-app .cnt{position:absolute;right:calc(var(--B)*-.03);top:calc(var(--B)*-.012);min-width:calc(var(--B)*.035);height:calc(var(--B)*.035);padding:0 .2em;z-index:2;border-radius:999px;background:var(--forest);color:#fff;border:calc(var(--B)*.0025) solid #fffdf2;font-size:calc(var(--B)*.024);font-weight:800;display:grid;place-items:center;line-height:1;box-shadow:0 2px 6px rgba(49,64,40,.15)}
+/* The small companions sit visibly above each shoulder; the leading figure
+   stays full size. Up to four silhouettes accompany the exact count badge. */
+#yut-app .piggyback .fig.front{z-index:4;transform:rotate(4deg)}
+#yut-app .fig.back1{z-index:3;transform:translate(calc(var(--B)*-.028),calc(var(--B)*-.070)) rotate(-6deg) scale(.65);filter:brightness(.98) drop-shadow(0 2px 1px #4d402b20)}
+#yut-app .fig.back2{z-index:2;transform:translate(calc(var(--B)*.034),calc(var(--B)*-.096)) rotate(7deg) scale(.57);filter:brightness(.96) drop-shadow(0 2px 1px #4d402b20)}
+#yut-app .fig.back3{z-index:1;transform:translate(calc(var(--B)*-.014),calc(var(--B)*-.128)) rotate(-4deg) scale(.49);filter:brightness(.94)}
+#yut-app .k-fly .fig.back1,#yut-app .k-roll .fig.back1{transform:translate(calc(var(--B)*-.025),calc(var(--B)*-.046)) rotate(-8deg) scale(.65)}
+#yut-app .k-fly .fig.back2,#yut-app .k-roll .fig.back2{transform:translate(calc(var(--B)*.032),calc(var(--B)*-.068)) rotate(9deg) scale(.57)}
+#yut-app .k-fly .fig.back3,#yut-app .k-roll .fig.back3{transform:translate(calc(var(--B)*-.01),calc(var(--B)*-.088)) rotate(-5deg) scale(.49)}
+#yut-app .cnt{position:absolute;right:calc(var(--B)*-.038);top:calc(var(--B)*-.008);min-width:calc(var(--B)*.035);height:calc(var(--B)*.035);padding:0 .2em;z-index:8;border-radius:999px;background:var(--forest);color:#fff;border:calc(var(--B)*.0025) solid #fffdf2;font-size:calc(var(--B)*.024);font-weight:800;display:grid;place-items:center;line-height:1;box-shadow:0 2px 6px rgba(49,64,40,.15)}
 #yut-app .pc.ghostnew .figs{opacity:.65}
 #yut-app .pc.ghostnew.sel .figs{opacity:1}
 #yut-app .pc.can .lift{animation:yutBob 1.4s ease-in-out infinite}
@@ -169,6 +180,19 @@ header[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecorat
 #yut-app .rolling .fig.front .spr{animation:yutSpin var(--per,.38s) linear infinite;transform-origin:50% 57%}
 #yut-app .rolling .fig.front{animation:yutStep calc(var(--per,.38s)/2) ease-in-out infinite}
 @keyframes yutSpin{to{transform:rotate(360deg)}}
+#yut-app .move-fx{pointer-events:none}
+#yut-app .impact-zone{z-index:30;--fx-color:#b84f36}
+#yut-app .impact-ring{position:absolute;left:0;top:0;width:calc(var(--B)*.095);height:calc(var(--B)*.095);border:calc(var(--B)*.006) solid var(--fx-color);border-radius:50%;box-shadow:0 0 0 calc(var(--B)*.003) #fff7df99;animation:yutImpactRing .67s cubic-bezier(.12,.55,.35,1) both}
+#yut-app .impact-ring.second{border-width:calc(var(--B)*.003);border-style:dashed;animation-delay:.11s;animation-duration:.72s}
+#yut-app .impact-zone.stack .impact-ring{border-color:#b78e32}
+#yut-app .impact-sparks{position:absolute;left:0;bottom:calc(var(--B)*.065);width:0;height:0}
+#yut-app .impact-spark{position:absolute;left:0;top:0;width:calc(var(--B)*.019);height:calc(var(--B)*.019);margin:calc(var(--B)*-.0095);background:#cf9f39;clip-path:polygon(50% 0,62% 34%,98% 32%,70% 57%,80% 94%,50% 72%,20% 94%,30% 57%,2% 32%,38% 34%);animation:yutImpactSpark .69s ease-out both}
+#yut-app .impact-spark.ink{width:calc(var(--B)*.010);height:calc(var(--B)*.010);margin:calc(var(--B)*-.005);background:var(--fx-color);border-radius:38% 62% 55% 45%;clip-path:none}
+#yut-app .impact-count{position:absolute;left:0;top:var(--tag-y);padding:.35em .6em;border:1px solid var(--fx-color);border-radius:4px;background:#fff5d9;color:#83502f;font-family:"YutHand","Malgun Gothic",sans-serif;font-size:calc(var(--B)*.030);line-height:1.1;white-space:nowrap;box-shadow:2px 3px 0 #70502d22;animation:yutImpactTag .98s ease-out both}
+#yut-app .caught-flyer .fig{filter:drop-shadow(0 5px 2px #48331f23)}
+@keyframes yutImpactRing{0%{transform:translate(-50%,-50%) scale(.55);opacity:0}14%{opacity:.95}100%{transform:translate(-50%,-50%) scale(2.2);opacity:0}}
+@keyframes yutImpactSpark{0%{transform:translate(0,0) rotate(0) scale(.5);opacity:0}13%{opacity:1}80%{opacity:1}100%{transform:translate(var(--spark-x),var(--spark-y)) rotate(var(--spark-turn)) scale(.65);opacity:0}}
+@keyframes yutImpactTag{0%{transform:translate(-50%,7px) scale(.8);opacity:0}18%,72%{transform:translate(-50%,0) scale(1);opacity:1}100%{transform:translate(-50%,-9px) scale(.97);opacity:0}}
 #yut-app .call{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:6}
 #yut-app .call .call-box{display:flex;flex-direction:column;align-items:center;background:rgba(255,253,244,.97);border:1px solid #e0d6b8;border-radius:25px;box-shadow:0 20px 60px rgba(66,64,38,.16);padding:clamp(24px,3vw,50px) clamp(34px,4vw,70px);opacity:0;transform:translateY(12px) scale(.9);max-width:95%}
 #yut-app .call .call-box strong{font-size:clamp(48px,5.6vw,108px);font-weight:900;letter-spacing:-.09em;line-height:1.1;white-space:nowrap;color:var(--forest)}
@@ -392,3 +416,24 @@ header[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecorat
  #yut-app .festival-seal{font-size:10px;padding:2px}
  #yut-app .show-results{font-size:10px}
 }
+
+
+/* Original soundtrack controls. The tablet remains silent. */
+#yut-app .audio-panel{position:absolute;right:24px;top:76px;width:310px;max-width:calc(100vw - 28px);max-height:calc(100vh - 100px);overflow:auto;z-index:100;background:#fff7e5;color:#544331;border:1px solid #af8c5c;border-radius:12px;box-shadow:0 9px 35px #42281735;padding:18px;font:14px/1.55 "Malgun Gothic",sans-serif;text-align:left}
+#yut-app .audio-panel[hidden]{display:none!important}
+#yut-app .audio-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #ddcba6;padding-bottom:8px}
+#yut-app .audio-heading h2{font:28px/1.2 "YutBrush",serif;margin:0;color:#785038}
+#yut-app .audio-close{background:transparent;border:1px solid #cdb992;border-radius:6px;color:#785038;width:34px;height:34px;font:24px/1 sans-serif;cursor:pointer}
+#yut-app .audio-note{font-size:12px;color:#8c765a;margin:9px 0 14px}
+#yut-app .audio-track-label,#yut-app .audio-volume-label{font-size:12px;font-weight:bold;display:block;margin:12px 0 6px}
+#yut-app .audio-panel select{width:100%;min-height:40px;border:1px solid #c5ac81;background:#fffdf5;border-radius:6px;color:#57432c;padding:7px;font:13px "Malgun Gothic",sans-serif}
+#yut-app .audio-toggles{display:flex;gap:20px;margin-top:12px}
+#yut-app .audio-toggles label{display:flex;align-items:center;gap:7px;min-height:36px;cursor:pointer}
+#yut-app .audio-panel input[type="checkbox"]{width:18px;height:18px;accent-color:#a35439}
+#yut-app .audio-panel input[type="range"]{width:100%;min-height:30px;margin:0;accent-color:#a35439;cursor:pointer}
+#yut-app .audio-panel output{float:right;color:#a35439}
+#yut-app .audio-mute{width:100%;border:1px solid #bc9865;border-radius:7px;min-height:38px;background:#ead8b1;color:#684b30;font:600 13px "Malgun Gothic",sans-serif;margin-top:10px;cursor:pointer}
+#yut-app .audio-status{font-size:12px;min-height:18px;color:#6d7c48;margin:10px 0 6px}
+#yut-app .audio-panel small{display:block;font-size:10px;line-height:1.6;color:#927d60}
+#yut-app .audio-panel button:focus-visible,#yut-app .audio-panel input:focus-visible,#yut-app .audio-panel select:focus-visible{outline:3px solid #bb713d;outline-offset:3px}
+@media(max-width:700px){#yut-app .audio-panel{right:12px;top:62px}}

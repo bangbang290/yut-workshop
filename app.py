@@ -1,4 +1,4 @@
-"""심사2국 워크숍 · 윷놀이 한마당 수정판 2.1.3.
+"""심사2국 워크숍 · 윷놀이 한마당 수정판 2.2.
 실제 윷 결과를 진행석에서 입력하고, 팀 대표가 패드에서 말을 옮깁니다.
 /?view=screen · /?view=ctrl · /?view=pad — 동일한 SQLite 판을 공유합니다.
 """
@@ -21,7 +21,7 @@ import yutcore as Y
 
 st.set_page_config(page_title="윷놀이 한마당", page_icon="🎋", layout="wide", initial_sidebar_state="collapsed")
 Y.init()
-BUILD_LABEL = "수정판 2.1.3"
+BUILD_LABEL = "수정판 2.2"
 DOT = ["🟠", "🟣", "🔵", "🟢"]
 NODE_NM = {"END": "참먹이", "C": "방", "A1": "모 지름길 1", "A2": "모 지름길 2", "A3": "방→찌모 1", "A4": "방→찌모 2", "B1": "뒷모 지름길 1", "B2": "뒷모 지름길 2", "B3": "방→참먹이 1", "B4": "방→참먹이 2"}
 for _i, _n in enumerate(["도", "개", "걸", "윷", "모"]):
@@ -143,7 +143,7 @@ def controller_resources(S):
     still matches. This keeps another device's move from being cached under
     the wrong version. The cache holds only one snapshot per browser session.
     """
-    cache_name = "_yut_controller_resources_v21"
+    cache_name = "_yut_controller_resources_v22"
     cached = st.session_state.get(cache_name)
     if cached is not None and cached["state_key"] == _state_key(S):
         return cached
@@ -172,7 +172,13 @@ def turn_card(S):
     if over:
         what = "모두 함께한 한 판, 수고하셨습니다!"
     elif S["phase"] == "throw":
-        what = "윷·모! 한 번 더 던져 주세요." if S["pending"] else "잡기 성공! 한 번 더 던져 주세요." if (S.get("last", {}).get("caughtN") and S.get("last", {}).get("team") == S["turn"] and S["cfg"]["captureBonus"]) else "실제 윷을 던지고, 나온 결과를 눌러 주세요."
+        reason = Y.throw_reason(S)
+        if reason == "capture":
+            what = "잡기 성공! 바로 한 번 더 던져 주세요. 남은 결과는 그대로 보관합니다."
+        elif reason in ("yut", "mo"):
+            what = f"{Y.RES[reason]['nm']}! 한 번 더 던져 주세요."
+        else:
+            what = "실제 윷을 던지고, 나온 결과를 눌러 주세요."
     else:
         what = "팀 대표가 패드에서 말과 도착 칸을 골라 주세요."
     md(f'<div class="yx yx-turn" style="--tc:{Y.HEX[team]}"><span class="dot">{html.escape(Y.tname(S,team)[:1])}</span><div><div class="yx-eyebrow" style="color:#d9c59c">{"오늘의 우승" if over else "이번 차례"}</div><b>{html.escape(Y.tname(S,team))} {"승리!" if over else "차례"}</b><small>{what}</small></div></div>')
@@ -287,12 +293,21 @@ def log_html(S):
 
 def rules_panel(S):
     with st.expander("이번 판 규칙 보기"):
-        st.markdown("**모·뒷모·방에 멈춘 말**은 다음 이동 때 지름길로 갑니다. 같은 팀 말은 자동으로 업고, 함께 움직입니다.")
-        st.markdown("**윷·모**가 나오면 한 번 더 던집니다. 남은 결과는 원하는 순서로 사용할 수 있습니다.")
-        st.markdown("**상대 말을 잡으면 한 번 더 던집니다.**" if S["cfg"]["captureBonus"] else "이번 판은 잡기 추가 던지기를 사용하지 않습니다.")
-        st.markdown("**빽도 사용:** 왔던 길로 한 칸 돌아갑니다. 도에서 빽도가 나오면 참먹이에 서고, 다음 전진 결과로 나갑니다." if S["cfg"]["backdo"] else "이번 판은 빽도를 사용하지 않습니다.")
+        st.markdown(f"**이번 판은 팀당 말 {S['cfg']['pieces']}개입니다.** 모든 말을 먼저 내보낸 팀부터 순위를 정합니다.")
+        st.markdown("**윷·모는 한 번 더 던집니다.** 추가 던지기를 마친 뒤, 남은 결과를 하나씩 원하는 순서로 사용합니다. 여러 말에 나누어 써도 됩니다.")
+        st.markdown("**도·개·걸·빽도로 잡으면 즉시 한 번 더 던집니다.** 아직 쓰지 않은 결과는 보관하며, 새 결과와 함께 원하는 순서로 사용합니다. **윷·모로 잡았을 때는 추가 던지기를 중복 지급하지 않습니다.**" if S["cfg"]["captureBonus"] else "이번 판은 잡기 추가 던지기를 사용하지 않습니다.")
+        st.markdown("**잡기·업기는 도착한 칸에서만 적용합니다.** 같은 팀 말은 자동으로 업고 함께 이동합니다. 업힌 말을 잡으면 전부 대기로 돌아갑니다." + (" 여러 개를 잡아도 잡기 추가 던지기는 한 번입니다." if S["cfg"]["captureBonus"] else " 이번 판은 잡아도 추가로 던지지 않습니다."))
+        st.markdown("**모·뒷모·방에 멈춘 말**은 다음 전진 때 지름길로 갑니다. 그 칸을 지나가기만 하면 방향을 바꾸지 않습니다.")
+        st.markdown("**빽도:** 왔던 길로 한 칸 돌아갑니다. 도에서 빽도가 나오면 참먹이에 서고, 다음 전진 결과로 완주합니다. 판에 말이 없고 쓸 전진 결과도 없으면 빽도를 넘깁니다." if S["cfg"]["backdo"] else "이번 판은 빽도를 사용하지 않습니다.")
         st.markdown("**완주:** 참먹이를 지나야 완주합니다." if S["cfg"]["strictEnd"] else "**완주:** 참먹이에 닿기만 해도 완주합니다.")
-        st.caption("마지막 한 팀이 남으면 나머지 순위가 확정됩니다. 지역별 윷놀이 규칙이 다를 수 있어, 시작 전에 이번 판 규칙을 함께 확인해 주세요.")
+        st.markdown("**낙:** 윷이 정한 던지기 구역을 벗어나면 진행석에서 ‘낙’을 누릅니다. 이번 차례의 미사용 결과와 추가 던지기는 사라지고 다음 팀으로 넘어갑니다. 이미 이동한 말은 되돌리지 않습니다.")
+        st.caption("널리 쓰는 기본 규칙을 바탕으로 정한 이번 행사 기준입니다. 빽도·낙·완주는 모임마다 다를 수 있으니 시작 전에 함께 확인해 주세요. 마지막 한 팀이 남으면 나머지 순위가 확정됩니다.")
+
+
+@st.fragment(run_every=1)
+def current_rules():
+    # This panel must follow a new game/restore in another browser, too.
+    rules_panel(Y.get())
 
 
 def screen_view():
@@ -328,12 +343,16 @@ def ctrl_view():
                     label=Y.RES[r]['nm']+(' ↻' if Y.RES[r]['again'] else '')
                     if col.button(label,key=f'throw_{r}_v{S["ver"]}',disabled=disabled,use_container_width=True,help=('한 번 더 던지기' if Y.RES[r]['again'] else f'{Y.RES[r]["steps"]}칸 이동')):
                         if act(Y.throw,r,expected_ver=S['ver']): st.rerun(scope='fragment')
+            if st.button('낙 · 이번 차례 넘기기',key=f'nak_v{S["ver"]}',disabled=not can,use_container_width=True,
+                         help='던지기 구역을 벗어난 경우에만 누르세요. 이번 차례의 남은 결과를 버리고 다음 팀으로 넘깁니다. 잘못 눌렀다면 되돌릴 수 있습니다.'):
+                if act(Y.nak,expected_ver=S['ver']): st.rerun(scope='fragment')
             if S['phase']=='move':
-                md('<div class="yx-msg">✋ 결과 입력 완료 · 팀 대표가 말을 옮기는 중입니다.<br>남은 결과를 모두 사용하면 다음 결과를 입력할 수 있어요.</div>')
+                capture_hint = '도·개·걸·빽도로 잡으면 즉시 추가 던지기로 바뀝니다.' if S['cfg']['captureBonus'] else '이번 판은 잡기 추가 던지기를 사용하지 않습니다.'
+                md('<div class="yx-msg">결과 입력 완료 · 팀 대표가 말을 옮기는 중입니다.<br>남은 결과는 원하는 순서로 사용하세요. '+capture_hint+'</div>')
             elif S['phase']=='over':
                 md('<div class="yx-msg">한 판이 끝났습니다. 아래 ‘새 게임’에서 다시 시작할 수 있어요.</div>')
             else:
-                md('<div class="yx-msg">윷·모는 추가 던지기 후 말을 옮깁니다. 결과를 잘못 눌렀다면 되돌리기를 사용하세요.</div>')
+                md('<div class="yx-msg">추가 던지기 중에도 남은 결과는 보관합니다. 던지기를 마치면 새 결과와 함께 골라 쓰세요.<br>결과를 잘못 눌렀다면 되돌리기를 사용하세요.</div>')
             left,right=st.columns(2)
             if left.button('↶ 한 수 되돌리기',key=f'undo_v{S["ver"]}',disabled=not resources['can_undo'],use_container_width=True):
                 if act(Y.undo,expected_ver=S['ver']): st.rerun(scope='fragment')
@@ -373,18 +392,22 @@ def ctrl_view():
             except Y.GameError as e:
                 st.error(str(e))
     with st.expander('새 게임 · 팀 수와 규칙 설정'):
+        mode=st.radio('새 판 규칙',['행사 기본 규칙','직접 설정'],horizontal=True,key='new_rule_mode')
+        custom=mode=='직접 설정'
+        defaults=S['cfg'] if custom else Y.default_cfg()
+        st.caption('행사 기본: 팀당 말 4개 · 빽도 사용 · 잡으면 즉시 추가 던지기 · 윷·모 잡기 중복 없음 · 참먹이를 지나면 완주 · 낙이면 차례 종료')
         with st.form('newgame'):
             teams=st.radio('참가 팀 수',[2,3,4],index=[2,3,4].index(S['cfg']['teams']),horizontal=True,format_func=lambda n:f'{n}팀')
-            pieces=st.radio('팀마다 말 수',[1,2,3,4,5,6],index=S['cfg']['pieces']-1,horizontal=True,format_func=lambda n:f'{n}개')
-            backdo=st.checkbox('빽도 사용',S['cfg']['backdo'])
-            cap=st.checkbox('상대 말을 잡으면 한 번 더 던지기',S['cfg']['captureBonus'])
-            strict=st.checkbox('참먹이를 지나야 완주 (끄면 닿기만 해도 완주)',S['cfg']['strictEnd'])
+            pieces=st.radio('팀마다 말 수',[1,2,3,4,5,6],index=defaults['pieces']-1,horizontal=True,format_func=lambda n:f'{n}개',disabled=not custom,key=f'new_pieces_{custom}')
+            backdo=st.checkbox('빽도 사용',defaults['backdo'],disabled=not custom,key=f'new_backdo_{custom}')
+            cap=st.checkbox('상대 말을 잡으면 한 번 더 던지기',defaults['captureBonus'],disabled=not custom,key=f'new_capture_{custom}')
+            strict=st.checkbox('참먹이를 지나야 완주 (끄면 닿기만 해도 완주)',defaults['strictEnd'],disabled=not custom,key=f'new_end_{custom}')
             sure=st.checkbox('현재 판을 끝내고 새로 시작합니다')
             if st.form_submit_button('새 게임 시작',type='primary'):
                 if not sure: st.warning('‘현재 판을 끝내고 새로 시작합니다’를 먼저 선택해 주세요.')
                 elif act(Y.new_game,dict(S['cfg'],teams=teams,pieces=pieces,backdo=backdo,captureBonus=cap,strictEnd=strict)):
                     st.success('새 게임을 시작했습니다.')
-    rules_panel(S)
+    current_rules()
 
 
 def pad_view():
@@ -415,7 +438,7 @@ def pad_view():
             with st.expander('버튼으로 말 옮기기'):
                 move_panel(S,'pad_move')
         live()
-    rules_panel(Y.get())
+    current_rules()
 
 
 def home_view():
