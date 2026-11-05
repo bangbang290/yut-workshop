@@ -193,19 +193,20 @@
     if(!quiet)beep('winner');
   }
 
-  var soundEngine=null,soundPrefs={music:true,effects:true,voice:true,muted:false,volume:.4,voiceVolume:1,track:'pungmul'};
-  var CHANT_LABEL={catch:'얼쑤!',bonus:'지화자!',winner:'풍악을 울려라!'};
+  var soundEngine=null,soundPrefs={music:true,effects:true,voice:true,muted:false,volume:.4,voiceVolume:1,track:'pungmul',autoCycle:true};
+  var CHANT_LABEL={catch:'얼쑤!',bonus:'지화자, 좋다!',winner:'풍악을 울려라!'};
   try{
-    var storedSound=JSON.parse(W.localStorage.getItem('yut-sound-v23')||W.localStorage.getItem('yut-sound-v22')||'null');
+    var storedSound=JSON.parse(W.localStorage.getItem('yut-sound-v24')||W.localStorage.getItem('yut-sound-v23')||W.localStorage.getItem('yut-sound-v22')||'null');
     if(storedSound&&typeof storedSound==='object'){
-      ['music','effects','voice','muted'].forEach(function(k){if(typeof storedSound[k]==='boolean')soundPrefs[k]=storedSound[k];});
+      ['music','effects','voice','muted','autoCycle'].forEach(function(k){if(typeof storedSound[k]==='boolean')soundPrefs[k]=storedSound[k];});
+      if(['pungmul','gutgeori','jajinmori','hwimori'].indexOf(storedSound.track)>=0)soundPrefs.track=storedSound.track;
       ['volume','voiceVolume'].forEach(function(k){if(typeof storedSound[k]==='number'&&isFinite(storedSound[k]))soundPrefs[k]=Math.max(0,Math.min(1,storedSound[k]));});
     }
   }catch(e){}
-  function saveSound(){try{W.localStorage.setItem('yut-sound-v23',JSON.stringify(soundPrefs));}catch(e){}}
+  function saveSound(){try{W.localStorage.setItem('yut-sound-v24',JSON.stringify(soundPrefs));}catch(e){}}
   function audioEngine(){
     if(!soundEngine&&W.YutAudio&&W.YutAudio.create){
-      soundEngine=W.YutAudio.create({music:soundPrefs.music,effects:soundPrefs.effects,voice:soundPrefs.voice,volume:soundPrefs.volume,voiceVolume:soundPrefs.voiceVolume,track:'pungmul',onChange:updateAudioButton});
+      soundEngine=W.YutAudio.create({music:soundPrefs.music,effects:soundPrefs.effects,voice:soundPrefs.voice,volume:soundPrefs.volume,voiceVolume:soundPrefs.voiceVolume,track:soundPrefs.track,autoCycle:soundPrefs.autoCycle,onChange:updateAudioButton});
       soundEngine.setMuted(soundPrefs.muted);
       if(S)soundEngine.setState(S);
     }
@@ -214,6 +215,7 @@
   function updateAudioButton(){
     if(!root)return;
     var status=soundEngine?soundEngine.status():null;
+    if(status&&status.track&&status.track!==soundPrefs.track){soundPrefs.track=status.track;saveSound();}
     var on=status&&status.unlocked&&status.contextState==='running'&&!soundPrefs.muted&&soundPrefs.volume>0&&(soundPrefs.music||soundPrefs.effects||(soundPrefs.voice&&soundPrefs.voiceVolume>0));
     var button=$('.sound-btn');if(!button)return;
     button.innerHTML=icon(on?'sound':'muted')+'<span class="tool-label">'+(on?'풍물·추임새':'소리 켜기')+'</span>';
@@ -222,6 +224,11 @@
     button.setAttribute('title','풍물·효과음·추임새 설정 · M 키로 전체 음소거');
     var panel=$('.audio-panel');if(!panel)return;
     ['music','effects','voice'].forEach(function(k){panel.querySelector('[name="'+k+'"]').checked=soundPrefs[k];});
+    panel.querySelector('[name="autoCycle"]').checked=soundPrefs.autoCycle;
+    Array.prototype.forEach.call(panel.querySelectorAll('[data-music-track]'),function(choice){
+      var active=choice.dataset.musicTrack===soundPrefs.track;choice.classList.toggle('selected',active);choice.setAttribute('aria-pressed',active?'true':'false');
+    });
+    panel.querySelector('.audio-cycle-note').textContent=soundPrefs.autoCycle?'선택한 곡부터, 한 곡이 끝나면 다음 곡으로 이어집니다.':'선택한 한 곡을 반복해서 듣습니다.';
     panel.querySelector('#yut-audio-volume').value=Math.round(soundPrefs.volume*100);
     panel.querySelector('#yut-voice-volume').value=Math.round(soundPrefs.voiceVolume*100);
     panel.querySelector('#yut-audio-volume-value').textContent=Math.round(soundPrefs.volume*100)+'%';
@@ -236,14 +243,14 @@
     else if(!status||!status.unlocked)message='위 소리 버튼을 눌러 시작하세요.';
     else if(status.reason==='hidden')message='화면으로 돌아오면 풍물이 이어집니다.';
     else if(status.voicePlaying)message=(CHANT_LABEL[status.voicePlaying]||'추임새')+' 재생 중';
-    else if(soundPrefs.music&&status.playing)message='풍물 한마당 재생';
+    else if(soundPrefs.music&&status.playing)message=(status.trackName||'풍물 한마당')+' 재생'+(soundPrefs.autoCycle?' · 네 곡 이어 듣기':' · 한 곡 반복');
     else if(soundPrefs.music&&status.reason==='game-over')message='한 판이 끝나 배경음이 쉬고 있습니다.';
     else if(soundPrefs.music)message='풍물 소리를 준비하고 있습니다.';
     else if(soundPrefs.voice||soundPrefs.effects)message='추임새·효과음 대기 중';
     else message='배경음·효과음·추임새가 꺼져 있습니다.';
     panel.querySelector('.audio-status').textContent=message;
     var clips=!!(W.YutVoiceClips&&W.YutVoiceClips.catch&&W.YutVoiceClips.bonus&&W.YutVoiceClips.winner);
-    panel.querySelector('.voice-status').textContent=!clips?'추임새 음성을 불러오지 못했습니다.':!soundPrefs.voice?'추임새가 꺼져 있습니다.':soundPrefs.voiceVolume===0?'추임새 음량을 올려 주세요.':status&&status.unlocked&&!status.voiceReady?'추임새 음성을 준비하고 있습니다.':'아래 문구를 눌러 목소리와 크기를 확인하세요.';
+    panel.querySelector('.voice-status').textContent=!clips?'추임새 음성을 불러오지 못했습니다.':!soundPrefs.voice?'추임새가 꺼져 있습니다.':soundPrefs.voiceVolume===0?'추임새 음량을 올려 주세요.':status&&status.voiceError?'추임새 음성을 재생하지 못했습니다. 새 탭에서 다시 열어 주세요.':status&&status.unlocked&&!status.voiceReady?'추임새 음성을 준비하고 있습니다.':'아래 문구를 눌러 목소리와 크기를 확인하세요.';
   }
   function unlockSound(){
     var engine=audioEngine();
@@ -277,12 +284,25 @@
     var promise=unlockSound(),play=function(){engine.say(kind,{key:'audition|'+kind+'|'+Date.now()});updateAudioButton();};
     if(promise&&promise.then)promise.then(play).catch(function(){});else play();
   }
+  function musicChoices(){
+    var tracks=W.YutAudio&&W.YutAudio.tracks||[{id:'pungmul',name:'풍물 한마당'}];
+    var moods={pungmul:'신명나는 꽹과리 합주',gutgeori:'넉넉하게 흐르는 장단',jajinmori:'주고받으며 경쾌하게',hwimori:'빠르게 몰아치는 잔치'};
+    var names={pungmul:'풍물 한마당',gutgeori:'굿거리 산책',jajinmori:'자진모리 놀음',hwimori:'휘모리 질주'};
+    return tracks.map(function(t){return '<button type="button" class="audio-track-choice" data-music-track="'+esc(t.id)+'" aria-label="배경음: '+esc(t.name)+'" aria-pressed="false"><b>'+esc(names[t.id]||t.name)+'</b><span>'+esc(moods[t.id]||t.description||'풍물 장단')+'</span></button>';}).join('');
+  }
+  function chooseMusic(id){
+    var engine=audioEngine();if(!engine)return;
+    soundPrefs.track=id;soundPrefs.music=true;soundPrefs.muted=false;
+    engine.setTrack(id);engine.setMusic(true);engine.setMuted(false);saveSound();unlockSound();updateAudioButton();
+  }
   function setupAudioPanel(){
-    var panel=div('audio-panel',root,'<div class="audio-heading"><h2>한마당 소리</h2><button type="button" class="audio-close" aria-label="소리 설정 닫기">×</button></div><p class="audio-note">스크린 한 곳에서 들려 주세요.</p><div class="audio-track-card"><b>풍물 한마당</b><span>꽹과리 · 장구 · 북 · 징</span></div><div class="audio-toggles"><label><input type="checkbox" name="music">배경음</label><label><input type="checkbox" name="effects">효과음</label><label><input type="checkbox" name="voice">추임새</label></div><label class="audio-volume-label" for="yut-audio-volume">전체 음량 <output id="yut-audio-volume-value">40%</output></label><input type="range" id="yut-audio-volume" aria-label="전체 음량" min="0" max="100" step="1" value="40"><label class="audio-volume-label" for="yut-voice-volume">추임새 음량 <output id="yut-voice-volume-value">100%</output></label><input type="range" id="yut-voice-volume" aria-label="추임새 음량" min="0" max="100" step="1" value="100"><p class="voice-status"></p><div class="chant-auditions" aria-label="추임새 미리듣기"><button type="button" data-chant="catch">얼쑤!</button><button type="button" data-chant="bonus">지화자!</button><button type="button" data-chant="winner">풍악을 울려라!</button></div><button type="button" class="audio-mute">전체 음소거</button><p class="audio-status" role="status"></p><small>추임새가 나올 땐 풍물 소리가 잠깐 작아집니다.<br>성인 남성 합성 음성 · M 음소거 · F 전체 화면</small>');
+    var panel=div('audio-panel',root,'<div class="audio-heading"><h2>한마당 소리</h2><button type="button" class="audio-close" aria-label="소리 설정 닫기">×</button></div><p class="audio-note">스크린 한 곳에서 들려 주세요.</p><div class="audio-playlist" role="group" aria-label="배경음 선택">'+musicChoices()+'</div><label class="audio-cycle"><input type="checkbox" name="autoCycle">네 곡 이어 듣기</label><p class="audio-cycle-note"></p><div class="audio-toggles"><label><input type="checkbox" name="music">배경음</label><label><input type="checkbox" name="effects">효과음</label><label><input type="checkbox" name="voice">추임새</label></div><label class="audio-volume-label" for="yut-audio-volume">전체 음량 <output id="yut-audio-volume-value">40%</output></label><input type="range" id="yut-audio-volume" aria-label="전체 음량" min="0" max="100" step="1" value="40"><label class="audio-volume-label" for="yut-voice-volume">추임새 음량 <output id="yut-voice-volume-value">100%</output></label><input type="range" id="yut-voice-volume" aria-label="추임새 음량" min="0" max="100" step="1" value="100"><p class="voice-status"></p><div class="chant-auditions" aria-label="추임새 미리듣기"><button type="button" data-chant="catch">얼쑤!</button><button type="button" data-chant="bonus">지화자, 좋다!</button><button type="button" data-chant="winner">풍악을 울려라!</button></div><button type="button" class="audio-mute">전체 음소거</button><p class="audio-status" role="status"></p><small>추임새가 나올 땐 풍물 소리가 잠깐 작아집니다.<br>성인 남성 합성 음성 · M 음소거 · F 전체 화면</small>');
     panel.id='yut-audio-panel';panel.hidden=true;panel.setAttribute('role','dialog');panel.setAttribute('aria-label','풍물과 추임새 설정');
     $('.sound-btn').setAttribute('aria-controls',panel.id);$('.sound-btn').setAttribute('aria-expanded','false');
     panel.querySelector('.audio-close').addEventListener('click',function(){closeAudio();$('.sound-btn').focus();});
     ['music','effects','voice'].forEach(function(kind){panel.querySelector('[name="'+kind+'"]').addEventListener('change',function(e){soundPrefs[kind]=e.target.checked;var engine=audioEngine();if(engine){if(kind==='music')engine.setMusic(soundPrefs.music);else if(kind==='effects')engine.setEffects(soundPrefs.effects);else if(engine.setVoice)engine.setVoice(soundPrefs.voice);}if(e.target.checked){soundPrefs.muted=false;if(engine)engine.setMuted(false);unlockSound();}saveSound();updateAudioButton();});});
+    panel.querySelector('[name="autoCycle"]').addEventListener('change',function(e){soundPrefs.autoCycle=e.target.checked;var engine=audioEngine();if(engine&&engine.setAutoCycle)engine.setAutoCycle(soundPrefs.autoCycle);saveSound();updateAudioButton();});
+    Array.prototype.forEach.call(panel.querySelectorAll('[data-music-track]'),function(choice){choice.addEventListener('click',function(){chooseMusic(choice.dataset.musicTrack);});});
     panel.querySelector('#yut-audio-volume').addEventListener('input',function(e){soundPrefs.volume=Number(e.target.value)/100;var engine=audioEngine();if(engine)engine.setVolume(soundPrefs.volume);saveSound();updateAudioButton();});
     panel.querySelector('#yut-voice-volume').addEventListener('input',function(e){soundPrefs.voiceVolume=Number(e.target.value)/100;var engine=audioEngine();if(engine&&engine.setVoiceVolume)engine.setVoiceVolume(soundPrefs.voiceVolume);saveSound();updateAudioButton();});
     Array.prototype.forEach.call(panel.querySelectorAll('[data-chant]'),function(button){button.addEventListener('click',function(){auditionChant(button.dataset.chant);});});

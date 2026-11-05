@@ -449,3 +449,13 @@ header[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecorat
 #yut-app .chant-auditions button{min-height:36px;border:1px solid #b78d59;border-radius:7px;background:#fff2d3;color:#8b4c2b;font:18px/1.2 "YutHand","Malgun Gothic",sans-serif;cursor:pointer;box-shadow:1px 2px 0 #d2b78d}
 #yut-app .chant-auditions button:last-child{grid-column:1/-1;background:#b04d33;color:#fff7de;border-color:#984029}
 #yut-app .chant-auditions button:active{transform:translateY(1px);box-shadow:none}
+
+/* Four contrasting original pungmul pieces, with an optional continuous playlist. */
+#yut-app .audio-playlist{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+#yut-app .audio-track-choice{min-height:77px;padding:9px 8px;text-align:left;border:1px solid #c6ad83;border-radius:8px;background:#fffaf0;color:#76563a;cursor:pointer;display:flex;flex-direction:column;gap:5px}
+#yut-app .audio-track-choice b{font:21px/1.2 "YutHand","Malgun Gothic",sans-serif;word-break:keep-all}
+#yut-app .audio-track-choice span{font:10px/1.5 "Malgun Gothic",sans-serif;color:#8b7357}
+#yut-app .audio-track-choice.selected{border-color:#9f4d32;background:#f0dcb3;box-shadow:inset 0 0 0 1px #9f4d32}
+#yut-app .audio-track-choice.selected b{color:#8b432c}
+#yut-app .audio-cycle{display:flex;align-items:center;gap:7px;margin-top:9px;min-height:31px;font-size:12px;cursor:pointer;font-weight:bold}
+#yut-app .audio-cycle-note{margin:0 0 7px;color:#92734f;font-size:10px;line-height:1.6}
