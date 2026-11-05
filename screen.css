@@ -437,3 +437,15 @@ header[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecorat
 #yut-app .audio-panel small{display:block;font-size:10px;line-height:1.6;color:#927d60}
 #yut-app .audio-panel button:focus-visible,#yut-app .audio-panel input:focus-visible,#yut-app .audio-panel select:focus-visible{outline:3px solid #bb713d;outline-offset:3px}
 @media(max-width:700px){#yut-app .audio-panel{right:12px;top:62px}}
+
+/* Pungmul and spoken cheers share one compact sound panel. */
+#yut-app .audio-track-card{background:#f0dfb7;border:1px solid #c7a46d;border-radius:8px;padding:11px 13px;display:flex;flex-direction:column;gap:2px}
+#yut-app .audio-track-card b{font:25px/1.2 "YutHand","Malgun Gothic",sans-serif;color:#774d2c}
+#yut-app .audio-track-card span{font-size:11px;letter-spacing:.02em;color:#8b6a43}
+#yut-app .audio-toggles{gap:11px;flex-wrap:wrap}
+#yut-app .audio-toggles label{gap:5px;font-size:13px}
+#yut-app .voice-status{font-size:11px;line-height:1.5;color:#8a7050;margin:9px 0 7px}
+#yut-app .chant-auditions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#yut-app .chant-auditions button{min-height:36px;border:1px solid #b78d59;border-radius:7px;background:#fff2d3;color:#8b4c2b;font:18px/1.2 "YutHand","Malgun Gothic",sans-serif;cursor:pointer;box-shadow:1px 2px 0 #d2b78d}
+#yut-app .chant-auditions button:last-child{grid-column:1/-1;background:#b04d33;color:#fff7de;border-color:#984029}
+#yut-app .chant-auditions button:active{transform:translateY(1px);box-shadow:none}

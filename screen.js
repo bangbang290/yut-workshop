@@ -188,24 +188,24 @@
       var confetti=div('confetti',root);for(var i=0;i<65;i++){var p=doc.createElement('i');p.style.left=Math.random()*100+'%';p.style.background=['#c96d4c','#d6ac56','#7c9875','#a9b8c2','#ede2bf'][i%5];p.style.animationDuration=(2.8+Math.random()*2.5)+'s';p.style.animationDelay=Math.random()*.9+'s';confetti.appendChild(p);}setTimeout(function(){confetti.remove();},6500);
     }
     var rows=s.ranks.map(function(t,i){return '<div class="rank-row"><span class="rank-no">'+(i+1)+'위</span><span class="av" style="--tc:'+COLORS[t]+'">'+av(t)+'</span><span class="rank-team">'+esc(tname(s,t))+'</span><span class="rank-state">'+s.done[t]+' / '+s.cfg.pieces+' 완주</span></div>';}).join('');
-    var overlay=div('overlay',root,'<section class="win" role="dialog" aria-label="최종 순위"><div class="winner-mark">오늘의 윷놀이 우승팀</div><div class="winner-art">'+spr(s.ranks[0])+'</div><h2>'+esc(tname(s,s.ranks[0]))+' 우승!</h2><p class="win-sub">다 함께 즐긴 한 판, 모두 수고하셨습니다.</p><div class="rank">'+rows+'</div><button class="tool-btn close-results" type="button">말판 다시 보기</button></section>');
+    var overlay=div('overlay',root,'<section class="win" role="dialog" aria-label="최종 순위"><div class="winner-mark">오늘의 윷놀이 우승팀</div><div class="winner-art">'+spr(s.ranks[0])+'</div><h2>'+esc(tname(s,s.ranks[0]))+' 우승!</h2><p class="win-sub">풍악을 울려라! 다 함께 즐긴 한 판, 모두 수고하셨습니다.</p><div class="rank">'+rows+'</div><button class="tool-btn close-results" type="button">말판 다시 보기</button></section>');
     overlay.querySelector('.close-results').addEventListener('click',function(){overlay.remove();$('.show-results').focus();});
     if(!quiet)beep('winner');
   }
 
-  var soundEngine=null,soundPrefs={music:true,effects:true,muted:false,volume:.35,track:'folk'};
+  var soundEngine=null,soundPrefs={music:true,effects:true,voice:true,muted:false,volume:.4,voiceVolume:1,track:'pungmul'};
+  var CHANT_LABEL={catch:'얼쑤!',bonus:'지화자!',winner:'풍악을 울려라!'};
   try{
-    var storedSound=JSON.parse(W.localStorage.getItem('yut-sound-v22')||'null');
+    var storedSound=JSON.parse(W.localStorage.getItem('yut-sound-v23')||W.localStorage.getItem('yut-sound-v22')||'null');
     if(storedSound&&typeof storedSound==='object'){
-      ['music','effects','muted'].forEach(function(k){if(typeof storedSound[k]==='boolean')soundPrefs[k]=storedSound[k];});
-      if(typeof storedSound.volume==='number'&&isFinite(storedSound.volume))soundPrefs.volume=Math.max(0,Math.min(1,storedSound.volume));
-      if(storedSound.track==='folk'||storedSound.track==='trot')soundPrefs.track=storedSound.track;
+      ['music','effects','voice','muted'].forEach(function(k){if(typeof storedSound[k]==='boolean')soundPrefs[k]=storedSound[k];});
+      ['volume','voiceVolume'].forEach(function(k){if(typeof storedSound[k]==='number'&&isFinite(storedSound[k]))soundPrefs[k]=Math.max(0,Math.min(1,storedSound[k]));});
     }
   }catch(e){}
-  function saveSound(){try{W.localStorage.setItem('yut-sound-v22',JSON.stringify(soundPrefs));}catch(e){}}
+  function saveSound(){try{W.localStorage.setItem('yut-sound-v23',JSON.stringify(soundPrefs));}catch(e){}}
   function audioEngine(){
     if(!soundEngine&&W.YutAudio&&W.YutAudio.create){
-      soundEngine=W.YutAudio.create({music:soundPrefs.music,effects:soundPrefs.effects,volume:soundPrefs.volume,track:soundPrefs.track,onChange:updateAudioButton});
+      soundEngine=W.YutAudio.create({music:soundPrefs.music,effects:soundPrefs.effects,voice:soundPrefs.voice,volume:soundPrefs.volume,voiceVolume:soundPrefs.voiceVolume,track:'pungmul',onChange:updateAudioButton});
       soundEngine.setMuted(soundPrefs.muted);
       if(S)soundEngine.setState(S);
     }
@@ -214,38 +214,53 @@
   function updateAudioButton(){
     if(!root)return;
     var status=soundEngine?soundEngine.status():null;
-    var on=status&&status.unlocked&&status.contextState==='running'&&!soundPrefs.muted&&soundPrefs.volume>0&&(soundPrefs.music||soundPrefs.effects);
+    var on=status&&status.unlocked&&status.contextState==='running'&&!soundPrefs.muted&&soundPrefs.volume>0&&(soundPrefs.music||soundPrefs.effects||(soundPrefs.voice&&soundPrefs.voiceVolume>0));
     var button=$('.sound-btn');if(!button)return;
-    button.innerHTML=icon(on?'sound':'muted')+'<span class="tool-label">'+(on?'음악·효과음':'소리 켜기')+'</span>';
-    button.setAttribute('aria-label',on?'음악과 효과음 설정':'소리 켜기 및 설정');
+    button.innerHTML=icon(on?'sound':'muted')+'<span class="tool-label">'+(on?'풍물·추임새':'소리 켜기')+'</span>';
+    button.setAttribute('aria-label',on?'풍물과 추임새 설정':'소리 켜기 및 설정');
     button.setAttribute('aria-pressed',on?'true':'false');
-    button.setAttribute('title','음악·효과음 설정 · M 키로 전체 음소거');
+    button.setAttribute('title','풍물·효과음·추임새 설정 · M 키로 전체 음소거');
     var panel=$('.audio-panel');if(!panel)return;
-    panel.querySelector('[name="music"]').checked=soundPrefs.music;
-    panel.querySelector('[name="effects"]').checked=soundPrefs.effects;
-    panel.querySelector('select').value=soundPrefs.track;
-    panel.querySelector('input[type="range"]').value=Math.round(soundPrefs.volume*100);
-    panel.querySelector('output').textContent=Math.round(soundPrefs.volume*100)+'%';
+    ['music','effects','voice'].forEach(function(k){panel.querySelector('[name="'+k+'"]').checked=soundPrefs[k];});
+    panel.querySelector('#yut-audio-volume').value=Math.round(soundPrefs.volume*100);
+    panel.querySelector('#yut-voice-volume').value=Math.round(soundPrefs.voiceVolume*100);
+    panel.querySelector('#yut-audio-volume-value').textContent=Math.round(soundPrefs.volume*100)+'%';
+    panel.querySelector('#yut-voice-volume-value').textContent=Math.round(soundPrefs.voiceVolume*100)+'%';
     var muteButton=panel.querySelector('.audio-mute');
     muteButton.textContent=soundPrefs.muted?'전체 소리 켜기':'전체 음소거';
     muteButton.setAttribute('aria-pressed',soundPrefs.muted?'true':'false');
-    panel.querySelector('.audio-status').textContent=!W.YutAudio?'음악 파일을 함께 올려 주세요.':soundPrefs.muted?'전체 음소거 중':status&&status.unlocked?(status.paused?(status.reason==='game-over'?'한 판이 끝나 배경음이 쉬고 있습니다.':status.reason==='hidden'?'화면으로 돌아오면 음악이 이어집니다.':'배경음이 잠시 쉬고 있습니다.'):soundPrefs.music?(soundPrefs.track==='folk'?'장터 풍류':'잔칫날 트로트')+' 재생':soundPrefs.effects?'효과음만 재생':'배경음과 효과음이 꺼져 있습니다.'):'소리를 켜려면 위 소리 버튼을 눌러 주세요.';
+    var message='';
+    if(!W.YutAudio)message='음악 파일을 함께 올려 주세요.';
+    else if(soundPrefs.muted)message='전체 음소거 중';
+    else if(soundPrefs.volume===0)message='전체 음량을 올려 주세요.';
+    else if(!status||!status.unlocked)message='위 소리 버튼을 눌러 시작하세요.';
+    else if(status.reason==='hidden')message='화면으로 돌아오면 풍물이 이어집니다.';
+    else if(status.voicePlaying)message=(CHANT_LABEL[status.voicePlaying]||'추임새')+' 재생 중';
+    else if(soundPrefs.music&&status.playing)message='풍물 한마당 재생';
+    else if(soundPrefs.music&&status.reason==='game-over')message='한 판이 끝나 배경음이 쉬고 있습니다.';
+    else if(soundPrefs.music)message='풍물 소리를 준비하고 있습니다.';
+    else if(soundPrefs.voice||soundPrefs.effects)message='추임새·효과음 대기 중';
+    else message='배경음·효과음·추임새가 꺼져 있습니다.';
+    panel.querySelector('.audio-status').textContent=message;
+    var clips=!!(W.YutVoiceClips&&W.YutVoiceClips.catch&&W.YutVoiceClips.bonus&&W.YutVoiceClips.winner);
+    panel.querySelector('.voice-status').textContent=!clips?'추임새 음성을 불러오지 못했습니다.':!soundPrefs.voice?'추임새가 꺼져 있습니다.':soundPrefs.voiceVolume===0?'추임새 음량을 올려 주세요.':status&&status.unlocked&&!status.voiceReady?'추임새 음성을 준비하고 있습니다.':'아래 문구를 눌러 목소리와 크기를 확인하세요.';
   }
   function unlockSound(){
     var engine=audioEngine();
-    if(!engine){notice('음악 파일 audio.js를 다른 실행 파일과 같은 위치에 올려 주세요. 말판은 계속 사용할 수 있습니다.');return;}
+    if(!engine){notice('음악 파일 audio.js를 다른 실행 파일과 같은 위치에 올려 주세요. 말판은 계속 사용할 수 있습니다.');return null;}
     try{
       var promise=engine.unlock();
       if(promise&&promise.then)promise.then(updateAudioButton).catch(function(){notice('소리 버튼을 한 번 더 눌러 주세요. 브라우저의 음소거 설정도 확인하세요.');});
+      updateAudioButton();return promise;
     }catch(e){notice('이 브라우저에서 소리를 시작하지 못했습니다. 말판은 계속 사용할 수 있습니다.');}
-    updateAudioButton();
+    updateAudioButton();return null;
   }
   function toggleSound(){
     var panel=$('.audio-panel'),engine=audioEngine(),status=engine&&engine.status();
     if(!status||!status.unlocked||status.contextState!=='running'||soundPrefs.muted){
       soundPrefs.muted=false;if(engine)engine.setMuted(false);saveSound();unlockSound();
     }
-    if(panel){panel.hidden=!panel.hidden;$('.sound-btn').setAttribute('aria-expanded',panel.hidden?'false':'true');if(!panel.hidden)panel.querySelector('select').focus();}
+    if(panel){panel.hidden=!panel.hidden;$('.sound-btn').setAttribute('aria-expanded',panel.hidden?'false':'true');if(!panel.hidden)panel.querySelector('[name="music"]').focus();}
     updateAudioButton();
   }
   function muteSound(){
@@ -255,16 +270,33 @@
     saveSound();updateAudioButton();
   }
   function closeAudio(){var p=$('.audio-panel');if(p)p.hidden=true;var b=$('.sound-btn');if(b)b.setAttribute('aria-expanded','false');}
+  function auditionChant(kind){
+    if(!soundPrefs.volume||!soundPrefs.voiceVolume){notice('전체 음량과 추임새 음량을 올린 뒤 들어 주세요.');return;}
+    var engine=audioEngine();if(!engine||!engine.say)return;
+    soundPrefs.voice=true;soundPrefs.muted=false;engine.setVoice(true);engine.setMuted(false);saveSound();
+    var promise=unlockSound(),play=function(){engine.say(kind,{key:'audition|'+kind+'|'+Date.now()});updateAudioButton();};
+    if(promise&&promise.then)promise.then(play).catch(function(){});else play();
+  }
   function setupAudioPanel(){
-    var panel=div('audio-panel',root,'<div class="audio-heading"><h2>한마당 소리</h2><button type="button" class="audio-close" aria-label="소리 설정 닫기">×</button></div><p class="audio-note">스크린 한 곳에서 들려 주세요.</p><label class="audio-track-label" for="yut-audio-track">배경음악</label><select id="yut-audio-track" aria-label="배경음악"><option value="folk">장터 풍류 · 국악풍</option><option value="trot">잔칫날 트로트 · 레트로풍</option></select><div class="audio-toggles"><label><input type="checkbox" name="music">배경음</label><label><input type="checkbox" name="effects">효과음</label></div><label class="audio-volume-label" for="yut-audio-volume">전체 음량 <output>35%</output></label><input type="range" id="yut-audio-volume" aria-label="전체 음량" min="0" max="100" step="1" value="35"><button type="button" class="audio-mute">전체 음소거</button><p class="audio-status" role="status"></p><small>오리지널 국악·트로트풍 전자음악<br>M 음소거 · F 전체 화면</small>');
-    panel.id='yut-audio-panel';panel.hidden=true;panel.setAttribute('role','dialog');panel.setAttribute('aria-label','음악과 효과음 설정');
+    var panel=div('audio-panel',root,'<div class="audio-heading"><h2>한마당 소리</h2><button type="button" class="audio-close" aria-label="소리 설정 닫기">×</button></div><p class="audio-note">스크린 한 곳에서 들려 주세요.</p><div class="audio-track-card"><b>풍물 한마당</b><span>꽹과리 · 장구 · 북 · 징</span></div><div class="audio-toggles"><label><input type="checkbox" name="music">배경음</label><label><input type="checkbox" name="effects">효과음</label><label><input type="checkbox" name="voice">추임새</label></div><label class="audio-volume-label" for="yut-audio-volume">전체 음량 <output id="yut-audio-volume-value">40%</output></label><input type="range" id="yut-audio-volume" aria-label="전체 음량" min="0" max="100" step="1" value="40"><label class="audio-volume-label" for="yut-voice-volume">추임새 음량 <output id="yut-voice-volume-value">100%</output></label><input type="range" id="yut-voice-volume" aria-label="추임새 음량" min="0" max="100" step="1" value="100"><p class="voice-status"></p><div class="chant-auditions" aria-label="추임새 미리듣기"><button type="button" data-chant="catch">얼쑤!</button><button type="button" data-chant="bonus">지화자!</button><button type="button" data-chant="winner">풍악을 울려라!</button></div><button type="button" class="audio-mute">전체 음소거</button><p class="audio-status" role="status"></p><small>추임새가 나올 땐 풍물 소리가 잠깐 작아집니다.<br>성인 남성 합성 음성 · M 음소거 · F 전체 화면</small>');
+    panel.id='yut-audio-panel';panel.hidden=true;panel.setAttribute('role','dialog');panel.setAttribute('aria-label','풍물과 추임새 설정');
     $('.sound-btn').setAttribute('aria-controls',panel.id);$('.sound-btn').setAttribute('aria-expanded','false');
     panel.querySelector('.audio-close').addEventListener('click',function(){closeAudio();$('.sound-btn').focus();});
-    panel.querySelector('select').addEventListener('change',function(e){soundPrefs.track=e.target.value;var engine=audioEngine();if(engine)engine.setTrack(soundPrefs.track);saveSound();updateAudioButton();});
-    ['music','effects'].forEach(function(kind){panel.querySelector('[name="'+kind+'"]').addEventListener('change',function(e){soundPrefs[kind]=e.target.checked;var engine=audioEngine();if(engine){if(kind==='music')engine.setMusic(soundPrefs.music);else engine.setEffects(soundPrefs.effects);}if(e.target.checked){soundPrefs.muted=false;if(engine)engine.setMuted(false);unlockSound();}saveSound();updateAudioButton();});});
-    panel.querySelector('input[type="range"]').addEventListener('input',function(e){soundPrefs.volume=Number(e.target.value)/100;var engine=audioEngine();if(engine)engine.setVolume(soundPrefs.volume);saveSound();updateAudioButton();});
+    ['music','effects','voice'].forEach(function(kind){panel.querySelector('[name="'+kind+'"]').addEventListener('change',function(e){soundPrefs[kind]=e.target.checked;var engine=audioEngine();if(engine){if(kind==='music')engine.setMusic(soundPrefs.music);else if(kind==='effects')engine.setEffects(soundPrefs.effects);else if(engine.setVoice)engine.setVoice(soundPrefs.voice);}if(e.target.checked){soundPrefs.muted=false;if(engine)engine.setMuted(false);unlockSound();}saveSound();updateAudioButton();});});
+    panel.querySelector('#yut-audio-volume').addEventListener('input',function(e){soundPrefs.volume=Number(e.target.value)/100;var engine=audioEngine();if(engine)engine.setVolume(soundPrefs.volume);saveSound();updateAudioButton();});
+    panel.querySelector('#yut-voice-volume').addEventListener('input',function(e){soundPrefs.voiceVolume=Number(e.target.value)/100;var engine=audioEngine();if(engine&&engine.setVoiceVolume)engine.setVoiceVolume(soundPrefs.voiceVolume);saveSound();updateAudioButton();});
+    Array.prototype.forEach.call(panel.querySelectorAll('[data-chant]'),function(button){button.addEventListener('click',function(){auditionChant(button.dataset.chant);});});
     panel.querySelector('.audio-mute').addEventListener('click',muteSound);
     doc.addEventListener('pointerdown',function(e){if(!panel.hidden&&e.target.closest&&!e.target.closest('.audio-panel')&&!e.target.closest('.sound-btn'))closeAudio();},true);
+  }
+  function chantEvent(n,L,kind){
+    var engine=audioEngine();if(!engine||!engine.say)return;
+    var key=[n.game_id||'legacy',L.kind||'event',L.at==null?n.ver:L.at,kind].join('|');
+    engine.say(kind,{key:key,priority:kind==='winner'?10:0});
+  }
+  function chantCapture(n,L){
+    chantEvent(n,L,'catch');
+    if(L.bonusAwarded===true)chantEvent(n,L,'bonus');
   }
   function toggleFullscreen(){
     try{var p=doc.fullscreenElement?doc.exitFullscreen():root.requestFullscreen();if(p&&p.catch)p.catch(function(){notice('전체 화면을 열 수 없으면 F11을 눌러 주세요.');});}catch(e){notice('전체 화면을 열 수 없으면 F11을 눌러 주세요.');}
@@ -301,11 +333,12 @@
   function resultCount(n,L){var group=(n.groups||[]).find(function(g){return g.id===L.id;});return Number(L.resultN)||(group&&group.n)||Number(L.n)||1;}
   function afterMove(n,L,sounded){
     renderAll(n);
-    if(L.caught){callout('잡았다!',(Number(L.caughtN)||1)+'개의 말을 출발로!'+(L.bonusAwarded===true?' 한 번 더 던져요.':''));if(!sounded)beep('catch');}
+    if(L.caught){callout('얼쑤!',(Number(L.caughtN)||1)+'개의 말을 잡았습니다.'+(L.bonusAwarded===true?' 한 번 더 던져요.':''));if(!sounded){beep('catch');chantCapture(n,L);}}
     else if(L.finished){callout('났다!',(L.n>1?L.n+'개의 말이 함께':'말이 무사히')+' 도착했어요.');beep('done');}
     else if(L.stacked){var total=resultCount(n,L),already=Number(L.stackedN)||Math.max(1,total-(Number(L.n)||1));callout('업었다!',(Number(L.n)||1)+'개 + '+already+'개, 이제 '+total+'개가 함께!');if(!sounded)beep('stack');}
     else beep('tok');
-    if(L.rank&&n.phase!=='over')later(function(){callout(tname(n,L.team)+' '+L.rank+'위!','모든 말이 완주했어요.');},1300);
+    if(L.rank===1)chantEvent(n,L,'winner');
+    if(L.rank&&n.phase!=='over')later(function(){callout(L.rank===1?'풍악을 울려라!':tname(n,L.team)+' '+L.rank+'위!',tname(n,L.team)+' '+L.rank+'위! 모든 말이 완주했어요.');},1300);
     if(n.phase==='over'&&!wasOver)later(function(){if(S&&S.phase==='over')celebrate(n);},700);
     wasOver=n.phase==='over';
   }
@@ -349,7 +382,7 @@
         animate(turn,[{transform:'rotate(0) scale(1)'},{transform:'rotate('+(i%2?130:-125)+'deg) scale(.88)',offset:.65},{transform:'rotate('+(i%2?235:-215)+'deg) scale(.35)'}],{duration:duration,delay:delay,fill:'both'});
         [flying.querySelector('.base'),flying.querySelector('.shd')].forEach(function(e){animate(e,[{opacity:.5},{opacity:0}],{duration:140,delay:delay,fill:'forwards'});});
       });
-      later(function(){beep('catch');},170);
+      later(function(){beep('catch');chantCapture(n,L);},170);
     },impactAt);
     later(function(){finishMove(n,L,true);},impactAt+1040);
   }
@@ -403,9 +436,11 @@
     else if(S&&L.at!==(S.last||{}).at&&(L.kind==='throw'||L.kind==='nak'))cancelTransitions();
     var prev=changedGame?null:S;S=n;if(soundEngine)soundEngine.setState(n);
     if(!prev){seenMove=seenThrow=seenNak=L.at||null;wasOver=n.phase==='over';renderAll(n);if(wasOver)celebrate(n,true);return;}
+    // A first rank can arrive with a later event if several server actions were coalesced.
+    if(!interrupt&&!(prev.ranks||[]).length&&(n.ranks||[]).length&&!(L.kind==='move'&&L.rank===1))chantEvent(n,L,'winner');
     if(L.kind==='move'&&L.at!==seenMove){seenMove=L.at;animateMove(prev,n,L);return;}
     renderAll(n);
-    if(L.kind==='throw'&&L.at!==seenThrow){seenThrow=L.at;callout(NM[L.r]||'',AGAIN[L.r]?'한 번 더 던지세요!':L.r==='back'?'왔던 길로 한 칸 뒤로':STEPS[L.r]+'칸 앞으로');beep(AGAIN[L.r]?'big':'tok');}
+    if(L.kind==='throw'&&L.at!==seenThrow){seenThrow=L.at;callout(AGAIN[L.r]?'지화자!':NM[L.r]||'',AGAIN[L.r]?NM[L.r]+'! 한 번 더 던지세요.':L.r==='back'?'왔던 길로 한 칸 뒤로':STEPS[L.r]+'칸 앞으로');beep(AGAIN[L.r]?'big':'tok');if(AGAIN[L.r])chantEvent(n,L,'bonus');}
     if(L.kind==='nak'&&L.at!==seenNak){seenNak=L.at;callout('낙!','이번 차례를 마칩니다.');beep('nak');}
     if(n.phase==='over'&&!wasOver)celebrate(n);wasOver=n.phase==='over';
   }

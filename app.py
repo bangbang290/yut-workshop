@@ -1,4 +1,4 @@
-"""심사2국 워크숍 · 윷놀이 한마당 수정판 2.2.
+"""심사2국 워크숍 · 윷놀이 한마당 수정판 2.3.
 실제 윷 결과를 진행석에서 입력하고, 팀 대표가 패드에서 말을 옮깁니다.
 /?view=screen · /?view=ctrl · /?view=pad — 동일한 SQLite 판을 공유합니다.
 """
@@ -21,7 +21,7 @@ import yutcore as Y
 
 st.set_page_config(page_title="윷놀이 한마당", page_icon="🎋", layout="wide", initial_sidebar_state="collapsed")
 Y.init()
-BUILD_LABEL = "수정판 2.2"
+BUILD_LABEL = "수정판 2.3"
 DOT = ["🟠", "🟣", "🔵", "🟢"]
 NODE_NM = {"END": "참먹이", "C": "방", "A1": "모 지름길 1", "A2": "모 지름길 2", "A3": "방→찌모 1", "A4": "방→찌모 2", "B1": "뒷모 지름길 1", "B2": "뒷모 지름길 2", "B3": "방→참먹이 1", "B4": "방→참먹이 2"}
 for _i, _n in enumerate(["도", "개", "걸", "윷", "모"]):
